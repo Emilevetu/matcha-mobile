@@ -4,6 +4,7 @@ import { Map, MapMarker } from '../map/Map';
 import { usePlaces } from '../hooks/usePlaces';
 import type { MapRef } from '../map/Map.types';
 import * as Location from 'expo-location';
+import { PlaceSheet } from '../components/PlaceSheet';
 
 const MapScreen = () => {
   const { data: places, isLoading, error } = usePlaces();
@@ -12,10 +13,22 @@ const MapScreen = () => {
   const [locationLoading, setLocationLoading] = useState(false);
   const mapRef = useRef<MapRef>(null);
 
-  // Obtenir la localisation de l'utilisateur
-  useEffect(() => {
-    getCurrentLocation();
-  }, []);
+  // Suppression du recentrage automatique - seulement manuel via le bouton
+
+  // Fonction de recentrage ULTRA-RAPIDE utilisant la position en cache
+  const recenterToUserLocation = () => {
+    if (userLocation) {
+      console.log('⚡ Recentrage instantané avec position en cache:', userLocation);
+      // Animation 3x plus rapide (300ms au lieu de 1000ms)
+      mapRef.current?.animateTo({
+        center: userLocation,
+        zoom: 15
+      }, 300);
+    } else {
+      console.log('📍 Position non disponible, obtention de la localisation...');
+      getCurrentLocation();
+    }
+  };
 
   const getCurrentLocation = async () => {
     try {
@@ -110,33 +123,52 @@ const MapScreen = () => {
         showsUserLocation
         onRegionChange={() => {}}
       >
-        {places?.map((place, index) => (
-          <MapMarker
-            key={index}
-            coordinate={{
-              latitude: place.lat,
-              longitude: place.lng,
-            }}
-            onPress={() => setSelectedPlace(place)}
-          />
-        ))}
+        {places?.map((place, index) => {
+          console.log(`🗺️ Rendu marqueur ${index + 1}:`, {
+            name: place.name,
+            lat: place.lat,
+            lng: place.lng,
+            visible: true
+          });
+          return (
+            <MapMarker
+              key={index}
+              coordinate={{
+                latitude: place.lat,
+                longitude: place.lng,
+              }}
+              onPress={() => {
+                console.log(`📍 Clic sur marqueur ${index + 1}:`, place.name);
+                setSelectedPlace(place);
+              }}
+            />
+          );
+        })}
       </Map>
 
-      {selectedPlace && (
-        <View style={styles.placeInfo}>
-          <Text style={styles.placeName}>{selectedPlace.name}</Text>
-          <Text style={styles.placeAddress}>{selectedPlace.address}</Text>
-        </View>
-      )}
-
-      {/* Bouton de recentrage sur la position */}
+      {/* Bouton de recentrage ULTRA-RAPIDE */}
       <TouchableOpacity 
         style={styles.recenterButton}
-        onPress={getCurrentLocation}
+        onPress={recenterToUserLocation}
         disabled={locationLoading}
       >
         <Text style={styles.recenterIcon}>🧭</Text>
       </TouchableOpacity>
+
+      {/* Overlay invisible pour fermer la PlaceSheet en cliquant sur la carte */}
+      {selectedPlace && (
+        <TouchableOpacity 
+          style={styles.mapOverlay}
+          onPress={() => setSelectedPlace(null)}
+          activeOpacity={1}
+        />
+      )}
+
+      {/* PlaceSheet */}
+      <PlaceSheet 
+        place={selectedPlace} 
+        onClose={() => setSelectedPlace(null)} 
+      />
 
     </View>
   );
@@ -152,30 +184,6 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-  },
-  placeInfo: {
-    position: 'absolute',
-    bottom: 100,
-    left: 16,
-    right: 16,
-    backgroundColor: '#fff',
-    padding: 16,
-    borderRadius: 12,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.25,
-    shadowRadius: 4,
-    elevation: 5,
-  },
-  placeName: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    color: '#8B9A46',
-    marginBottom: 4,
-  },
-  placeAddress: {
-    fontSize: 14,
-    color: '#6B7A3A',
   },
   recenterButton: {
     position: 'absolute',
@@ -197,6 +205,14 @@ const styles = StyleSheet.create({
   },
   recenterIcon: {
     fontSize: 20,
+  },
+  mapOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: '50%', // Couvre seulement la moitié haute de l'écran
+    backgroundColor: 'transparent',
   },
 });
 

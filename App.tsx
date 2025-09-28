@@ -46,6 +46,7 @@ function MainApp() {
           name="Carte" 
           component={MapScreen}
           options={{
+            headerShown: false,
             tabBarIcon: () => <Text>🗺️</Text>,
           }}
         />

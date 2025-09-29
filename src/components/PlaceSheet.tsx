@@ -156,9 +156,19 @@ const styles = StyleSheet.create({
     right: 0,
     height: HALF_HEIGHT, // Mi-écran par défaut
     backgroundColor: 'white',
-    borderTopLeftRadius: 20,
-    borderTopRightRadius: 20,
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
     overflow: 'hidden',
+    zIndex: 1000, // Au-dessus de la section filtres
+    // Ombre Google Maps style
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: -4,
+    },
+    shadowOpacity: 0.15,
+    shadowRadius: 12,
+    elevation: 8, // Android
   },
   header: {
     position: 'absolute',

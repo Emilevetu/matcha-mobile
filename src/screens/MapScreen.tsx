@@ -117,8 +117,9 @@ const MapScreen = () => {
 
   return (
     <View style={styles.container}>
-      {/* Toggle de filtres style Poop Map - Toujours visible */}
-      <View style={styles.filterToggle}>
+      {/* Toggle de filtres style Poop Map */}
+      {!selectedPlace && (
+        <View style={styles.filterToggle}>
         <TouchableOpacity 
           style={[styles.filterButton, selectedFilter === 'globe' && styles.selectedFilter]}
           onPress={() => setSelectedFilter('globe')}
@@ -139,7 +140,8 @@ const MapScreen = () => {
         >
           <User size={20} color={selectedFilter === 'user' ? '#FFFFFF' : '#8B8B8B'} />
         </TouchableOpacity>
-      </View>
+        </View>
+      )}
 
       <Map
         ref={mapRef}

@@ -5,7 +5,10 @@ import {
   TouchableOpacity,
   StyleSheet,
   Dimensions,
+  Image,
+  ScrollView,
 } from 'react-native';
+import { MapPin, Clock, Heart, Bookmark, Share } from 'react-native-feather';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import Animated, {
   useSharedValue,
@@ -130,6 +133,9 @@ export const PlaceSheet: React.FC = () => {
         styles.container,
         animatedStyle
       ]}>
+        {/* Barre de drag Google Maps style */}
+        <View style={styles.dragHandle} />
+        
         <View style={styles.header} pointerEvents="box-none">
           <Text style={styles.headerTitle} numberOfLines={1}>{selectedPlace.name}</Text>
           <TouchableOpacity
@@ -140,9 +146,70 @@ export const PlaceSheet: React.FC = () => {
             <Text style={styles.closeTopButtonText}>Fermer</Text>
           </TouchableOpacity>
         </View>
-        <View style={styles.contentArea}>
-          <Text>Contenu…</Text>
-        </View>
+        <ScrollView style={styles.contentArea} showsVerticalScrollIndicator={false}>
+          {/* Image principale */}
+          {selectedPlace.photos && (
+            <View style={styles.imageContainer}>
+              <Image 
+                source={{ uri: selectedPlace.photos.split('|')[0] }}
+                style={styles.mainImage}
+                resizeMode="cover"
+              />
+            </View>
+          )}
+          
+          {/* Informations du lieu */}
+          <View style={styles.infoSection}>
+            {/* Adresse */}
+            <View style={styles.infoRow}>
+              <MapPin size={20} color="#7da06b" />
+              <Text style={styles.infoText}>{selectedPlace.address}</Text>
+            </View>
+            
+            {/* Horaires */}
+            {selectedPlace.hours && (
+              <View style={styles.infoRow}>
+                <Clock size={20} color="#7da06b" />
+                <Text style={styles.infoText}>{selectedPlace.hours}</Text>
+              </View>
+            )}
+          </View>
+          
+          {/* Boutons d'action */}
+          <View style={styles.actionsSection}>
+            <TouchableOpacity style={styles.reactButton}>
+              <Heart size={20} color="#FFFFFF" />
+              <Text style={styles.reactButtonText}>Réagir</Text>
+            </TouchableOpacity>
+            
+            <TouchableOpacity style={styles.saveButton}>
+              <Bookmark size={20} color="#333333" />
+              <Text style={styles.saveButtonText}>Enregistrer</Text>
+            </TouchableOpacity>
+            
+            <TouchableOpacity style={styles.shareButton}>
+              <Share size={20} color="#333333" />
+            </TouchableOpacity>
+          </View>
+          
+          {/* Galerie */}
+          {selectedPlace.photos && selectedPlace.photos.split('|').length > 1 && (
+            <View style={styles.gallerySection}>
+              <Text style={styles.galleryTitle}>Galerie</Text>
+              <View style={styles.galleryGrid}>
+                {selectedPlace.photos.split('|').slice(1, 3).map((photoUrl, index) => (
+                  <View key={index} style={styles.galleryItem}>
+                    <Image 
+                      source={{ uri: photoUrl }}
+                      style={styles.galleryImage}
+                      resizeMode="cover"
+                    />
+                  </View>
+                ))}
+              </View>
+            </View>
+          )}
+        </ScrollView>
       </Animated.View>
     </GestureDetector>
   );
@@ -159,7 +226,6 @@ const styles = StyleSheet.create({
     borderTopLeftRadius: 24,
     borderTopRightRadius: 24,
     overflow: 'hidden',
-    zIndex: 1000, // Au-dessus de la section filtres
     // Ombre Google Maps style
     shadowColor: '#000',
     shadowOffset: {
@@ -170,6 +236,17 @@ const styles = StyleSheet.create({
     shadowRadius: 12,
     elevation: 8, // Android
   },
+  dragHandle: {
+    position: 'absolute',
+    top: 8,
+    left: '50%',
+    marginLeft: -20,
+    width: 40,
+    height: 4,
+    backgroundColor: '#C4C4C4',
+    borderRadius: 2,
+    zIndex: 10,
+  },
   header: {
     position: 'absolute',
     top: 0,
@@ -177,7 +254,7 @@ const styles = StyleSheet.create({
     right: 0,
     height: 56,
     paddingHorizontal: 16,
-    paddingTop: 12,
+    paddingTop: 20,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
@@ -204,6 +281,102 @@ const styles = StyleSheet.create({
     marginTop: 56,
     padding: 16,
     flex: 1,
+  },
+  imageContainer: {
+    marginBottom: 16,
+    borderRadius: 12,
+    overflow: 'hidden',
+  },
+  mainImage: {
+    width: '100%',
+    height: 200,
+  },
+  infoSection: {
+    gap: 12,
+  },
+  infoRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  infoText: {
+    flex: 1,
+    fontSize: 16,
+    color: '#333',
+    lineHeight: 22,
+  },
+  actionsSection: {
+    flexDirection: 'row',
+    gap: 12,
+    marginTop: 20,
+  },
+  reactButton: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    backgroundColor: '#7da06b',
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    borderRadius: 25,
+  },
+  reactButtonText: {
+    color: '#FFFFFF',
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  saveButton: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    backgroundColor: '#FFFFFF',
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    borderRadius: 25,
+  },
+  saveButtonText: {
+    color: '#333333',
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  shareButton: {
+    width: 50,
+    height: 50,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#FFFFFF',
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+    borderRadius: 25,
+  },
+  gallerySection: {
+    marginTop: 24,
+  },
+  galleryTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: '#333333',
+    marginBottom: 12,
+  },
+  galleryGrid: {
+    flexDirection: 'row',
+    gap: 12,
+  },
+  galleryItem: {
+    flex: 1,
+    aspectRatio: 1,
+    borderRadius: 12,
+    overflow: 'hidden',
+    maxWidth: '45%',
+  },
+  galleryImage: {
+    width: '100%',
+    height: '100%',
   },
   title: {
     fontSize: 24,

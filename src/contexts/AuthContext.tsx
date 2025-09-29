@@ -7,7 +7,7 @@ interface AuthContextType {
   session: Session | null;
   loading: boolean;
   signIn: (email: string, password: string) => Promise<{ error: any }>;
-  signUp: (email: string, password: string) => Promise<{ error: any }>;
+  signUp: (email: string, password: string, username: string) => Promise<{ error: any }>;
   signOut: () => Promise<void>;
 }
 
@@ -62,12 +62,40 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     return { error };
   };
 
-  const signUp = async (email: string, password: string) => {
-    const { error } = await supabase.auth.signUp({
-      email,
-      password,
-    });
-    return { error };
+  const signUp = async (email: string, password: string, username: string) => {
+    console.log('🔐 AuthContext - Inscription:', { email, username });
+    
+    try {
+      // 1. Créer le compte utilisateur avec le username dans les métadonnées
+      const { data: authData, error: authError } = await supabase.auth.signUp({
+        email,
+        password,
+        options: {
+          data: {
+            username: username,
+            display_name: username
+          }
+        }
+      });
+
+      if (authError) {
+        console.error('❌ Erreur auth signup:', authError);
+        return { error: authError };
+      }
+
+      if (!authData.user) {
+        console.error('❌ Pas d\'utilisateur créé');
+        return { error: { message: 'Erreur lors de la création du compte' } };
+      }
+
+      console.log('✅ Utilisateur créé:', authData.user.id);
+      console.log('✅ Profil créé automatiquement par le trigger avec username:', username);
+      return { error: null };
+
+    } catch (error) {
+      console.error('❌ Erreur signup:', error);
+      return { error: { message: 'Erreur lors de la création du compte' } };
+    }
   };
 
   const signOut = async () => {

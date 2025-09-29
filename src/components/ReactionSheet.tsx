@@ -106,7 +106,20 @@ export const ReactionSheet: React.FC<ReactionSheetProps> = ({
 
           {/* Contenu */}
           <View style={styles.content}>
-            <Text style={styles.question}>Comment as-tu trouvé ton expérience ?</Text>
+            <Text style={styles.question}>Partage ton expérience à ton matcha crew</Text>
+            
+            {/* Boutons d'ajout de contenu */}
+            <View style={styles.addContentSection}>
+              <TouchableOpacity style={styles.addButton}>
+                <Text style={styles.addButtonIcon}>📸</Text>
+                <Text style={styles.addButtonText}>Ajoute une photo !</Text>
+              </TouchableOpacity>
+              
+              <TouchableOpacity style={styles.addButton}>
+                <Text style={styles.addButtonIcon}>💬</Text>
+                <Text style={styles.addButtonText}>Ajoute un commentaire !</Text>
+              </TouchableOpacity>
+            </View>
             
             {/* 3 boutons de réaction */}
             <View style={styles.reactionsContainer}>
@@ -155,7 +168,7 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.15,
     shadowRadius: 12,
     elevation: 8,
-    maxHeight: SCREEN_HEIGHT * 0.4,
+    maxHeight: SCREEN_HEIGHT * 0.5,
   },
   dragHandle: {
     position: 'absolute',
@@ -209,8 +222,43 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontWeight: '600',
     color: '#333',
-    marginBottom: 24,
+    marginBottom: 20,
     textAlign: 'center',
+  },
+  addContentSection: {
+    flexDirection: 'row',
+    gap: 12,
+    marginBottom: 24,
+    justifyContent: 'center',
+  },
+  addButton: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    backgroundColor: '#F8F9FA',
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  addButtonIcon: {
+    fontSize: 18,
+    marginRight: 8,
+  },
+  addButtonText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#7da06b',
   },
   reactionsContainer: {
     flexDirection: 'row',

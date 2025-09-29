@@ -115,7 +115,7 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 32,
     fontWeight: 'bold',
-    color: '#8B9A46',
+    color: '#7da06b',
     textAlign: 'center',
     marginBottom: 8,
   },
@@ -140,7 +140,7 @@ const styles = StyleSheet.create({
     color: '#5a4d3a',
   },
   button: {
-    backgroundColor: '#8B9A46',
+    backgroundColor: '#7da06b',
     borderRadius: 12,
     paddingVertical: 16,
     alignItems: 'center',

@@ -5,12 +5,15 @@ import { usePlaces } from '../hooks/usePlaces';
 import type { MapRef } from '../map/Map.types';
 import * as Location from 'expo-location';
 import { PlaceSheet } from '../components/PlaceSheet';
+import { usePlace } from '../contexts/PlaceContext';
+import { Navigation, Globe, Users, User } from 'react-native-feather';
 
 const MapScreen = () => {
   const { data: places, isLoading, error } = usePlaces();
-  const [selectedPlace, setSelectedPlace] = useState<any>(null);
+  const { selectedPlace, setSelectedPlace } = usePlace();
   const [userLocation, setUserLocation] = useState<{latitude: number, longitude: number} | null>(null);
   const [locationLoading, setLocationLoading] = useState(false);
+  const [selectedFilter, setSelectedFilter] = useState<'globe' | 'group' | 'user'>('group');
   const mapRef = useRef<MapRef>(null);
 
   // Suppression du recentrage automatique - seulement manuel via le bouton
@@ -114,6 +117,32 @@ const MapScreen = () => {
 
   return (
     <View style={styles.container}>
+      {/* Toggle de filtres style Poop Map */}
+      {!selectedPlace && (
+        <View style={styles.filterToggle}>
+        <TouchableOpacity 
+          style={[styles.filterButton, selectedFilter === 'globe' && styles.selectedFilter]}
+          onPress={() => setSelectedFilter('globe')}
+        >
+          <Globe size={20} color={selectedFilter === 'globe' ? '#FFFFFF' : '#8B8B8B'} />
+        </TouchableOpacity>
+        
+        <TouchableOpacity 
+          style={[styles.filterButton, selectedFilter === 'group' && styles.selectedFilter]}
+          onPress={() => setSelectedFilter('group')}
+        >
+          <Users size={20} color={selectedFilter === 'group' ? '#FFFFFF' : '#8B8B8B'} />
+        </TouchableOpacity>
+        
+        <TouchableOpacity 
+          style={[styles.filterButton, selectedFilter === 'user' && styles.selectedFilter]}
+          onPress={() => setSelectedFilter('user')}
+        >
+          <User size={20} color={selectedFilter === 'user' ? '#FFFFFF' : '#8B8B8B'} />
+        </TouchableOpacity>
+        </View>
+      )}
+
       <Map
         ref={mapRef}
         initialCamera={{ 
@@ -152,7 +181,7 @@ const MapScreen = () => {
         onPress={recenterToUserLocation}
         disabled={locationLoading}
       >
-        <Text style={styles.recenterIcon}>🧭</Text>
+        <Navigation size={20} color="#8B8B8B" />
       </TouchableOpacity>
 
       {/* Overlay invisible pour fermer la PlaceSheet en cliquant sur la carte */}
@@ -165,10 +194,7 @@ const MapScreen = () => {
       )}
 
       {/* PlaceSheet */}
-      <PlaceSheet 
-        place={selectedPlace} 
-        onClose={() => setSelectedPlace(null)} 
-      />
+      <PlaceSheet />
 
     </View>
   );
@@ -202,9 +228,8 @@ const styles = StyleSheet.create({
     elevation: 5,
     borderWidth: 1,
     borderColor: '#e0e0e0',
-  },
-  recenterIcon: {
-    fontSize: 20,
+    paddingTop: 1, // Ajuste légèrement vers le bas
+    paddingLeft: -9, // Décale 3x plus vers la gauche (1 * 3 = 3, +1 pour plus de précision)
   },
   mapOverlay: {
     position: 'absolute',
@@ -213,6 +238,34 @@ const styles = StyleSheet.create({
     right: 0,
     bottom: '50%', // Couvre seulement la moitié haute de l'écran
     backgroundColor: 'transparent',
+  },
+  // Styles pour le toggle de filtres
+  filterToggle: {
+    position: 'absolute',
+    top: 90, // Position ajustée
+    left: '50%',
+    transform: [{ translateX: -95 }], // Centre parfaitement le toggle (ajusté)
+    flexDirection: 'row',
+    backgroundColor: '#FFFFFF',
+    borderRadius: 25,
+    padding: 4, // Padding réduit (moitié de l'espace blanc)
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
+    zIndex: 1000,
+  },
+  filterButton: {
+    width: 50,
+    height: 40,
+    borderRadius: 20,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginHorizontal: 6,
+  },
+  selectedFilter: {
+    backgroundColor: '#F6B7C0', // Rose pour la sélection
   },
 });
 

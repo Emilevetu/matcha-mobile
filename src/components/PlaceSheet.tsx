@@ -4,110 +4,136 @@ import {
   Text,
   TouchableOpacity,
   StyleSheet,
-  Image,
   Dimensions,
 } from 'react-native';
-import { PanGestureHandler, State } from 'react-native-gesture-handler';
+import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import Animated, {
   useSharedValue,
   useAnimatedStyle,
   withSpring,
   runOnJS,
 } from 'react-native-reanimated';
+import { usePlace } from '../contexts/PlaceContext';
 
-interface Place {
-  name: string | null;
-  address: string | null;
-  hours: string | null;
-  photos: string | null;
-}
+const { height: screenHeight } = Dimensions.get('window');
+const HALF_HEIGHT = Math.round(screenHeight * 0.5);
+const MAX_HEIGHT = Math.round(screenHeight * 0.98); // hauteur max, on garde un léger cadre en haut
+const MIN_HEIGHT = 0; // pour suivre le doigt jusqu'à la fermeture
 
-interface PlaceSheetProps {
-  place: Place | null;
-  onClose: () => void;
-}
-
-export const PlaceSheet: React.FC<PlaceSheetProps> = ({ place, onClose }) => {
+export const PlaceSheet: React.FC = () => {
+  const { selectedPlace, setSelectedPlace } = usePlace();
   const [isFullScreen, setIsFullScreen] = useState(false);
+
+  // Hauteur animée de la sheet
+  const sheetHeight = useSharedValue(HALF_HEIGHT);
+  const startHeight = useSharedValue(HALF_HEIGHT);
   
   // Force half screen when a new place is selected
   React.useEffect(() => {
-    if (place) {
+    if (selectedPlace) {
       setIsFullScreen(false);
+      sheetHeight.value = HALF_HEIGHT; // Reset à mi-écran
     }
-  }, [place]);
+  }, [selectedPlace]);
   
-  if (!place) {
+  // Style animé basé sur la hauteur
+  const animatedStyle = useAnimatedStyle(() => {
+    return {
+      height: sheetHeight.value,
+    };
+  });
+
+  // Gesture handler - SUIVI DU DOIGT EN TEMPS RÉEL (animer la hauteur)
+  const panGesture = Gesture.Pan()
+    .onBegin(() => {
+      startHeight.value = sheetHeight.value;
+    })
+    .onUpdate((event) => {
+      // On augmente la hauteur en glissant vers le haut (translationY négative)
+      const next = startHeight.value - event.translationY;
+      // Toujours attaché au bas: hauteur clampée
+      const clamped = Math.max(MIN_HEIGHT, Math.min(MAX_HEIGHT, next));
+      sheetHeight.value = clamped;
+    })
+    .onEnd((event) => {
+      const { translationY, velocityY } = event;
+
+      // Seuils plus permissifs pour faciliter la descente
+      const downIntent = translationY > 60 || velocityY > 400;
+      const upIntent = translationY < -60 || velocityY < -400;
+
+      // Si on était à mi-écran et geste vers le bas → suivre le doigt jusqu'à un seuil bas
+      if (!isFullScreen && downIntent) {
+        // Si la hauteur est bien descendue sous un seuil, on ferme, sinon on revient à mi-écran
+        const closeThreshold = HALF_HEIGHT * 0.35;
+        if (sheetHeight.value <= closeThreshold) {
+          runOnJS(setSelectedPlace)(null);
+        } else {
+          sheetHeight.value = withSpring(HALF_HEIGHT, {
+            damping: 24,
+            stiffness: 240,
+            mass: 1,
+            overshootClamping: false,
+            restDisplacementThreshold: 0.5,
+            restSpeedThreshold: 1,
+            initialVelocity: -velocityY / 1000,
+          });
+        }
+        return;
+      }
+
+      // Depuis plein écran: décider entre rester plein écran ou descendre à mi-écran
+      if (isFullScreen) {
+        const target = downIntent ? HALF_HEIGHT : MAX_HEIGHT;
+        sheetHeight.value = withSpring(target, {
+          damping: 24,
+          stiffness: 240,
+          mass: 1,
+          overshootClamping: false,
+          restDisplacementThreshold: 0.5,
+          restSpeedThreshold: 1,
+          initialVelocity: -velocityY / 1000,
+        });
+        runOnJS(setIsFullScreen)(target === MAX_HEIGHT);
+        return;
+      }
+
+      // Sinon (mi-écran, geste vers le haut) → plein écran, sinon rester mi-écran
+      const target = upIntent ? MAX_HEIGHT : HALF_HEIGHT;
+      sheetHeight.value = withSpring(target, {
+        damping: 24,
+        stiffness: 240,
+        mass: 1,
+        overshootClamping: false,
+        restDisplacementThreshold: 0.5,
+        restSpeedThreshold: 1,
+        initialVelocity: -velocityY / 1000,
+      });
+      runOnJS(setIsFullScreen)(target === MAX_HEIGHT);
+    });
+  
+  if (!selectedPlace) {
     return null;
   }
 
-  // Parse photos from Supabase
-  const photos = place.photos ? place.photos.split('|') : [];
-  const firstPhoto = photos[0] || 'https://images.unsplash.com/photo-1554118811-1e0d58224f24?w=400&h=300&fit=crop&crop=center';
-  
-  // Simple gesture handler
-  const onGestureEvent = (event: any) => {
-    const { translationY, state } = event.nativeEvent;
-    
-    if (state === State.END) {
-      if (translationY < -50) {
-        // Swipe up - go full screen
-        setIsFullScreen(true);
-      } else if (translationY > 50) {
-        // Swipe down - go half screen
-        setIsFullScreen(false);
-      }
-    }
-  };
-
   return (
-    <PanGestureHandler onHandlerStateChange={onGestureEvent}>
+    <GestureDetector gesture={panGesture}>
       <Animated.View style={[
         styles.container,
-        isFullScreen ? styles.fullScreen : styles.halfScreen
+        animatedStyle
       ]}>
-      {/* Photo */}
-      <Image 
-        source={{ uri: firstPhoto }}
-        style={styles.photo}
-        resizeMode="cover"
-      />
-      
-      <Text style={styles.title}>
-        {place.name}
-      </Text>
-      
-      {/* Adresse */}
-      <Text style={styles.address}>
-        📍 {place.address}
-      </Text>
-      
-      {/* Horaires */}
-      <Text style={styles.hours}>
-        🕒 {place.hours}
-      </Text>
-      
-      {/* Boutons d'action */}
-      <View style={styles.buttonsContainer}>
-        <TouchableOpacity style={styles.reagirButton}>
-          <Text style={styles.reagirButtonText}>Réagir</Text>
-        </TouchableOpacity>
+        <Text style={styles.title}>{selectedPlace.name}</Text>
         
-        <TouchableOpacity style={styles.partagerButton}>
-          <Text style={styles.partagerButtonText}>Partager</Text>
+        <TouchableOpacity 
+          style={styles.closeButton} 
+          onPress={() => setSelectedPlace(null)}
+        >
+          <Text style={styles.closeButtonText}>Fermer</Text>
         </TouchableOpacity>
-      </View>
-      
-      <TouchableOpacity 
-        style={styles.closeButton} 
-        onPress={onClose}
-      >
-        <Text style={styles.closeButtonText}>Fermer</Text>
-      </TouchableOpacity>
       </Animated.View>
-    </PanGestureHandler>
+    </GestureDetector>
   );
-}
+};
 
 const styles = StyleSheet.create({
   container: {
@@ -115,87 +141,30 @@ const styles = StyleSheet.create({
     bottom: 0,
     left: 0,
     right: 0,
+    height: HALF_HEIGHT, // Mi-écran par défaut
     backgroundColor: 'white',
     borderTopLeftRadius: 20,
     borderTopRightRadius: 20,
     padding: 20,
-  },
-  halfScreen: {
-    height: 400,
-  },
-  fullScreen: {
-    height: '90%',
-  },
-  photo: {
-    width: '100%',
-    height: 200,
-    borderRadius: 10,
-    marginBottom: 20,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   title: {
     fontSize: 24,
-    textAlign: 'center',
-    marginBottom: 15,
     fontWeight: 'bold',
-  },
-  address: {
-    fontSize: 16,
-    color: '#666',
-    marginBottom: 10,
-    textAlign: 'center',
-  },
-  hours: {
-    fontSize: 16,
-    color: '#666',
     marginBottom: 20,
-    textAlign: 'center',
-  },
-  buttonsContainer: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginBottom: 20,
-    paddingHorizontal: 20,
-  },
-  reagirButton: {
-    backgroundColor: '#7da06b',
-    paddingVertical: 12,
-    paddingHorizontal: 24,
-    borderRadius: 25,
-    flex: 1,
-    marginRight: 10,
-  },
-  reagirButtonText: {
-    color: 'white',
-    fontSize: 16,
-    fontWeight: 'bold',
-    textAlign: 'center',
-  },
-  partagerButton: {
-    backgroundColor: 'white',
-    borderWidth: 2,
-    borderColor: '#7da06b',
-    paddingVertical: 12,
-    paddingHorizontal: 24,
-    borderRadius: 25,
-    flex: 1,
-    marginLeft: 10,
-  },
-  partagerButtonText: {
-    color: '#7da06b',
-    fontSize: 16,
-    fontWeight: 'bold',
     textAlign: 'center',
   },
   closeButton: {
     backgroundColor: 'red',
-    padding: 20,
-    margin: 20,
-    borderRadius: 10,
+    paddingVertical: 12,
+    paddingHorizontal: 24,
+    borderRadius: 25,
   },
   closeButtonText: {
     color: 'white',
-    textAlign: 'center',
     fontSize: 16,
     fontWeight: 'bold',
+    textAlign: 'center',
   },
 });

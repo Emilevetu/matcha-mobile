@@ -11,13 +11,14 @@ import Animated, {
   useSharedValue,
   useAnimatedStyle,
   withSpring,
+  withTiming,
   runOnJS,
 } from 'react-native-reanimated';
 import { usePlace } from '../contexts/PlaceContext';
 
 const { height: screenHeight } = Dimensions.get('window');
 const HALF_HEIGHT = Math.round(screenHeight * 0.5);
-const MAX_HEIGHT = Math.round(screenHeight * 0.98); // hauteur max, on garde un léger cadre en haut
+const MAX_HEIGHT = Math.round(screenHeight * 0.92); // compromis: quasi plein écran mais hint de carte visible
 const MIN_HEIGHT = 0; // pour suivre le doigt jusqu'à la fermeture
 
 export const PlaceSheet: React.FC = () => {
@@ -65,9 +66,16 @@ export const PlaceSheet: React.FC = () => {
       // Si on était à mi-écran et geste vers le bas → suivre le doigt jusqu'à un seuil bas
       if (!isFullScreen && downIntent) {
         // Si la hauteur est bien descendue sous un seuil, on ferme, sinon on revient à mi-écran
-        const closeThreshold = HALF_HEIGHT * 0.35;
+        // 35% de l'écran => 0.35 * screenHeight
+        // Or HALF_HEIGHT = 0.5 * screenHeight, donc multiplicateur = 0.35 / 0.5 = 0.7
+        const closeThreshold = HALF_HEIGHT * 0.7;
         if (sheetHeight.value <= closeThreshold) {
-          runOnJS(setSelectedPlace)(null);
+          // Fermeture ULTRA-rapide, sans rebond
+          sheetHeight.value = withTiming(MIN_HEIGHT, { duration: 100 }, (finished) => {
+            if (finished) {
+              runOnJS(setSelectedPlace)(null);
+            }
+          });
         } else {
           sheetHeight.value = withSpring(HALF_HEIGHT, {
             damping: 24,
@@ -122,14 +130,19 @@ export const PlaceSheet: React.FC = () => {
         styles.container,
         animatedStyle
       ]}>
-        <Text style={styles.title}>{selectedPlace.name}</Text>
-        
-        <TouchableOpacity 
-          style={styles.closeButton} 
-          onPress={() => setSelectedPlace(null)}
-        >
-          <Text style={styles.closeButtonText}>Fermer</Text>
-        </TouchableOpacity>
+        <View style={styles.header} pointerEvents="box-none">
+          <Text style={styles.headerTitle} numberOfLines={1}>{selectedPlace.name}</Text>
+          <TouchableOpacity
+            style={styles.closeTopButton}
+            onPress={() => setSelectedPlace(null)}
+            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+          >
+            <Text style={styles.closeTopButtonText}>Fermer</Text>
+          </TouchableOpacity>
+        </View>
+        <View style={styles.contentArea}>
+          <Text>Contenu…</Text>
+        </View>
       </Animated.View>
     </GestureDetector>
   );
@@ -145,9 +158,42 @@ const styles = StyleSheet.create({
     backgroundColor: 'white',
     borderTopLeftRadius: 20,
     borderTopRightRadius: 20,
-    padding: 20,
-    justifyContent: 'center',
+    overflow: 'hidden',
+  },
+  header: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    height: 56,
+    paddingHorizontal: 16,
+    paddingTop: 12,
+    flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: 'white',
+  },
+  headerTitle: {
+    flex: 1,
+    fontSize: 18,
+    fontWeight: '700',
+  },
+  closeTopButton: {
+    marginLeft: 12,
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    borderRadius: 8,
+    backgroundColor: '#eee',
+  },
+  closeTopButtonText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#333',
+  },
+  contentArea: {
+    marginTop: 56,
+    padding: 16,
+    flex: 1,
   },
   title: {
     fontSize: 24,

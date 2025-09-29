@@ -8,7 +8,8 @@ import {
   Image,
   ScrollView,
 } from 'react-native';
-import { MapPin, Clock, Heart, Bookmark, Share } from 'react-native-feather';
+import { MapPin, Clock, Heart, Bookmark, Share, X } from 'react-native-feather';
+import { ReactionSheet } from './ReactionSheet';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import Animated, {
   useSharedValue,
@@ -27,6 +28,12 @@ const MIN_HEIGHT = 0; // pour suivre le doigt jusqu'à la fermeture
 export const PlaceSheet: React.FC = () => {
   const { selectedPlace, setSelectedPlace } = usePlace();
   const [isFullScreen, setIsFullScreen] = useState(false);
+  const [showReactionSheet, setShowReactionSheet] = useState(false);
+
+  // Debug log pour vérifier l'état
+  React.useEffect(() => {
+    console.log('🔧 PlaceSheet - showReactionSheet:', showReactionSheet);
+  }, [showReactionSheet]);
 
   // Hauteur animée de la sheet
   const sheetHeight = useSharedValue(HALF_HEIGHT);
@@ -49,6 +56,7 @@ export const PlaceSheet: React.FC = () => {
 
   // Gesture handler - SUIVI DU DOIGT EN TEMPS RÉEL (animer la hauteur)
   const panGesture = Gesture.Pan()
+    .enabled(!showReactionSheet) // Désactiver quand ReactionSheet est ouverte
     .onBegin(() => {
       startHeight.value = sheetHeight.value;
     })
@@ -128,90 +136,102 @@ export const PlaceSheet: React.FC = () => {
   }
 
   return (
-    <GestureDetector gesture={panGesture}>
-      <Animated.View style={[
-        styles.container,
-        animatedStyle
-      ]}>
-        {/* Barre de drag Google Maps style */}
-        <View style={styles.dragHandle} />
-        
-        <View style={styles.header} pointerEvents="box-none">
-          <Text style={styles.headerTitle} numberOfLines={1}>{selectedPlace.name}</Text>
-          <TouchableOpacity
-            style={styles.closeTopButton}
-            onPress={() => setSelectedPlace(null)}
-            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-          >
-            <Text style={styles.closeTopButtonText}>Fermer</Text>
-          </TouchableOpacity>
-        </View>
-        <ScrollView style={styles.contentArea} showsVerticalScrollIndicator={false}>
-          {/* Image principale */}
-          {selectedPlace.photos && (
-            <View style={styles.imageContainer}>
-              <Image 
-                source={{ uri: selectedPlace.photos.split('|')[0] }}
-                style={styles.mainImage}
-                resizeMode="cover"
-              />
-            </View>
-          )}
+    <>
+      <GestureDetector gesture={panGesture}>
+        <Animated.View style={[
+          styles.container,
+          animatedStyle
+        ]}>
+          {/* Barre de drag Google Maps style */}
+          <View style={styles.dragHandle} />
           
-          {/* Informations du lieu */}
-          <View style={styles.infoSection}>
-            {/* Adresse */}
-            <View style={styles.infoRow}>
-              <MapPin size={20} color="#7da06b" />
-              <Text style={styles.infoText}>{selectedPlace.address}</Text>
-            </View>
-            
-            {/* Horaires */}
-            {selectedPlace.hours && (
-              <View style={styles.infoRow}>
-                <Clock size={20} color="#7da06b" />
-                <Text style={styles.infoText}>{selectedPlace.hours}</Text>
+          <View style={styles.header} pointerEvents="box-none">
+            <Text style={styles.headerTitle} numberOfLines={1}>{selectedPlace.name}</Text>
+            <TouchableOpacity
+              style={styles.closeTopButton}
+              onPress={() => setSelectedPlace(null)}
+              hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+            >
+              <X size={20} color="#7da06b" />
+            </TouchableOpacity>
+          </View>
+          <ScrollView style={styles.contentArea} showsVerticalScrollIndicator={false}>
+            {/* Image principale */}
+            {selectedPlace.photos && (
+              <View style={styles.imageContainer}>
+                <Image 
+                  source={{ uri: selectedPlace.photos.split('|')[0] }}
+                  style={styles.mainImage}
+                  resizeMode="cover"
+                />
               </View>
             )}
-          </View>
-          
-          {/* Boutons d'action */}
-          <View style={styles.actionsSection}>
-            <TouchableOpacity style={styles.reactButton}>
-              <Heart size={20} color="#FFFFFF" />
-              <Text style={styles.reactButtonText}>Réagir</Text>
-            </TouchableOpacity>
             
-            <TouchableOpacity style={styles.saveButton}>
-              <Bookmark size={20} color="#333333" />
-              <Text style={styles.saveButtonText}>Enregistrer</Text>
-            </TouchableOpacity>
-            
-            <TouchableOpacity style={styles.shareButton}>
-              <Share size={20} color="#333333" />
-            </TouchableOpacity>
-          </View>
-          
-          {/* Galerie */}
-          {selectedPlace.photos && selectedPlace.photos.split('|').length > 1 && (
-            <View style={styles.gallerySection}>
-              <Text style={styles.galleryTitle}>Galerie</Text>
-              <View style={styles.galleryGrid}>
-                {selectedPlace.photos.split('|').slice(1, 3).map((photoUrl, index) => (
-                  <View key={index} style={styles.galleryItem}>
-                    <Image 
-                      source={{ uri: photoUrl }}
-                      style={styles.galleryImage}
-                      resizeMode="cover"
-                    />
-                  </View>
-                ))}
+            {/* Informations du lieu */}
+            <View style={styles.infoSection}>
+              {/* Adresse */}
+              <View style={styles.infoRow}>
+                <MapPin size={20} color="#7da06b" />
+                <Text style={styles.infoText}>{selectedPlace.address}</Text>
               </View>
+              
+              {/* Horaires */}
+              {selectedPlace.hours && (
+                <View style={styles.infoRow}>
+                  <Clock size={20} color="#7da06b" />
+                  <Text style={styles.infoText}>{selectedPlace.hours}</Text>
+                </View>
+              )}
             </View>
-          )}
-        </ScrollView>
-      </Animated.View>
-    </GestureDetector>
+            
+            {/* Boutons d'action */}
+            <View style={styles.actionsSection}>
+              <TouchableOpacity 
+                style={styles.reactButton}
+                onPress={() => setShowReactionSheet(true)}
+              >
+                <Heart size={20} color="#FFFFFF" />
+                <Text style={styles.reactButtonText}>Réagir</Text>
+              </TouchableOpacity>
+              
+              <TouchableOpacity style={styles.saveButton}>
+                <Bookmark size={20} color="#333333" />
+                <Text style={styles.saveButtonText}>Enregistrer</Text>
+              </TouchableOpacity>
+              
+              <TouchableOpacity style={styles.shareButton}>
+                <Share size={20} color="#333333" />
+              </TouchableOpacity>
+            </View>
+            
+            {/* Galerie */}
+            {selectedPlace.photos && selectedPlace.photos.split('|').length > 1 && (
+              <View style={styles.gallerySection}>
+                <Text style={styles.galleryTitle}>Galerie</Text>
+                <View style={styles.galleryGrid}>
+                  {selectedPlace.photos.split('|').slice(1, 3).map((photoUrl, index) => (
+                    <View key={index} style={styles.galleryItem}>
+                      <Image 
+                        source={{ uri: photoUrl }}
+                        style={styles.galleryImage}
+                        resizeMode="cover"
+                      />
+                    </View>
+                  ))}
+                </View>
+              </View>
+            )}
+          </ScrollView>
+        </Animated.View>
+      </GestureDetector>
+      
+      {/* ReactionSheet overlay */}
+      <ReactionSheet
+        isVisible={showReactionSheet}
+        onClose={() => setShowReactionSheet(false)}
+        placeName={selectedPlace.name}
+      />
+    </>
   );
 };
 
@@ -266,16 +286,21 @@ const styles = StyleSheet.create({
     fontWeight: '700',
   },
   closeTopButton: {
-    marginLeft: 12,
-    paddingVertical: 8,
-    paddingHorizontal: 12,
-    borderRadius: 8,
-    backgroundColor: '#eee',
-  },
-  closeTopButtonText: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#333',
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: '#F6B7C0',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginLeft: -12,
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 1,
+    },
+    shadowOpacity: 0.1,
+    shadowRadius: 2,
+    elevation: 2,
   },
   contentArea: {
     marginTop: 56,

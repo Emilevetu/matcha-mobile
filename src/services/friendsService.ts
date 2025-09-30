@@ -104,8 +104,14 @@ export const FriendsService = {
         .single();
       
       if (fetchError || !request) {
+        console.error('❌ Demande non trouvée:', { fetchError, request });
         return { success: false, error: 'Demande non trouvée' };
       }
+      
+      console.log('📋 Demande trouvée:', { 
+        requester_id: request.requester_id, 
+        requested_id: request.requested_id 
+      });
       
       // Mettre à jour le statut de la demande
       const { error: updateError } = await supabase
@@ -118,6 +124,11 @@ export const FriendsService = {
       }
       
       // Créer l'amitié bidirectionnelle
+      console.log('👥 Création amitié bidirectionnelle:', {
+        ligne1: { user_id: request.requester_id, friend_id: request.requested_id },
+        ligne2: { user_id: request.requested_id, friend_id: request.requester_id }
+      });
+      
       const { error: friendshipError } = await supabase
         .from('friendships')
         .insert([
@@ -188,7 +199,7 @@ export const FriendsService = {
       const friendIds = friendships.map(f => f.friend_id);
       const { data: profiles, error: profilesError } = await supabase
         .from('profiles')
-        .select('id, username, avatar_url')
+        .select('id, user_id, username, display_name, avatar_url')
         .in('user_id', friendIds);
 
       if (profilesError) {
@@ -203,10 +214,21 @@ export const FriendsService = {
           ...friendship,
           friend: profile ? {
             id: profile.id,
+            user_id: profile.user_id,
             username: profile.username,
             display_name: profile.display_name,
-            avatar_url: profile.avatar_url
-          } : { id: friendship.friend_id, username: 'Utilisateur inconnu', avatar_url: null }
+            avatar_url: profile.avatar_url,
+            created_at: profile.created_at || '',
+            updated_at: profile.updated_at || ''
+          } : { 
+            id: friendship.friend_id, 
+            user_id: friendship.friend_id, 
+            username: 'Utilisateur inconnu', 
+            display_name: 'Utilisateur inconnu', 
+            avatar_url: null,
+            created_at: '',
+            updated_at: ''
+          }
         };
       });
       
@@ -219,16 +241,16 @@ export const FriendsService = {
     }
   },
 
-  // 6. Récupérer les demandes d'amis
+  // 6. Récupérer les demandes d'amis (méthode robuste)
   async getFriendRequests(userId: string): Promise<{ success: boolean; data?: FriendRequestWithProfile[]; error?: string }> {
     try {
       console.log('📨 Récupération demandes d\'amis:', userId);
       
-      // 1. Récupérer les demandes reçues (pas celles envoyées)
+      // 1. Récupérer les demandes reçues
       const { data: requests, error: requestsError } = await supabase
         .from('friend_requests')
         .select('*')
-        .eq('requested_id', userId) // Seulement les demandes reçues
+        .eq('requested_id', userId)
         .eq('status', 'pending');
       
       if (requestsError) {
@@ -237,43 +259,56 @@ export const FriendsService = {
       }
 
       if (!requests || requests.length === 0) {
+        console.log('✅ Aucune demande d\'ami en attente');
         return { success: true, data: [] };
       }
 
       // 2. Récupérer les profils des utilisateurs
-      const userIds = [...new Set([...requests.map(r => r.requester_id), ...requests.map(r => r.requested_id)])];
+      const requesterIds = requests.map(r => r.requester_id);
       const { data: profiles, error: profilesError } = await supabase
         .from('profiles')
-        .select('id, username, avatar_url')
-        .in('user_id', userIds);
+        .select('id, user_id, username, display_name, avatar_url')
+        .in('user_id', requesterIds);
 
       if (profilesError) {
-        console.error('❌ Erreur récupération profils demandes:', profilesError);
+        console.error('❌ Erreur récupération profils:', profilesError);
         return { success: false, error: profilesError.message };
       }
 
       // 3. Combiner les données
       const requestsWithProfiles = requests.map(request => {
         const requesterProfile = profiles?.find(p => p.user_id === request.requester_id);
-        const requestedProfile = profiles?.find(p => p.user_id === request.requested_id);
         return {
           ...request,
           requester: requesterProfile ? {
             id: requesterProfile.id,
+            user_id: requesterProfile.user_id,
             username: requesterProfile.username,
             display_name: requesterProfile.display_name,
             avatar_url: requesterProfile.avatar_url
-          } : { id: request.requester_id, username: 'Utilisateur inconnu', avatar_url: null },
-          requested: requestedProfile ? {
-            id: requestedProfile.id,
-            username: requestedProfile.username,
-            display_name: requestedProfile.display_name,
-            avatar_url: requestedProfile.avatar_url
-          } : { id: request.requested_id, username: 'Utilisateur inconnu', avatar_url: null }
+          } : { 
+            id: request.requester_id, 
+            user_id: request.requester_id, 
+            username: 'Utilisateur inconnu', 
+            display_name: 'Utilisateur inconnu', 
+            avatar_url: null 
+          },
+          requested: {
+            id: request.requested_id,
+            user_id: request.requested_id,
+            username: 'Vous',
+            display_name: 'Vous',
+            avatar_url: null
+          }
         };
       });
       
       console.log('✅ Demandes récupérées:', requestsWithProfiles.length);
+      console.log('📊 Première demande:', {
+        requester: requestsWithProfiles[0]?.requester?.username,
+        avatar: requestsWithProfiles[0]?.requester?.avatar_url ? 'présent' : 'absent'
+      });
+      
       return { success: true, data: requestsWithProfiles };
       
     } catch (error) {

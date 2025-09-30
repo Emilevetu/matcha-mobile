@@ -292,7 +292,7 @@ const FriendsScreen = () => {
                   style={styles.friendAvatar}
                 />
                 <View style={styles.friendInfo}>
-                  <Text style={styles.friendName}>{friendship.friend.display_name || friendship.friend.username}</Text>
+                  <Text style={styles.friendName}>{friendship.friend.username}</Text>
                   <Text style={styles.friendDisplayName}>@{friendship.friend.username}</Text>
                   <Text style={styles.friendDate}>Ami depuis {new Date(friendship.created_at).toLocaleDateString()}</Text>
                 </View>

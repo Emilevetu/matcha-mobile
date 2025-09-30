@@ -1,12 +1,18 @@
-import React from 'react';
+import React, { useState } from 'react';
 import {
   View,
   Text,
   StyleSheet,
   Dimensions,
   TouchableOpacity,
+  TextInput,
+  Image,
 } from 'react-native';
-import { X } from 'react-native-feather';
+import { X, Send, Camera, MessageCircle } from 'react-native-feather';
+import { UploadService } from '../services/uploadService';
+import { ReactionsService, ReactionData } from '../services/reactionsService';
+import { useAuth } from '../contexts/AuthContext';
+import { supabase } from '../services/supabase';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import Animated, {
   useSharedValue,
@@ -21,15 +27,53 @@ interface ReactionSheetProps {
   isVisible: boolean;
   onClose: () => void;
   placeName: string;
+  placeId: string;
 }
 
 export const ReactionSheet: React.FC<ReactionSheetProps> = ({
   isVisible,
   onClose,
   placeName,
+  placeId,
 }) => {
+  const { user } = useAuth();
   const translateY = useSharedValue(SCREEN_HEIGHT);
   const context = useSharedValue({ y: 0 });
+  
+  // États pour la réaction
+  const [selectedEmoji, setSelectedEmoji] = useState<string | null>(null);
+  const [selectedPhoto, setSelectedPhoto] = useState<string | null>(null);
+  const [comment, setComment] = useState('');
+  const [isUploading, setIsUploading] = useState(false);
+  const [isSending, setIsSending] = useState(false);
+  const [userAvatar, setUserAvatar] = useState<string>('https://images.unsplash.com/photo-1494790108755-2616b612b786?w=150&h=150&fit=crop&crop=face');
+  
+  // État pour le pop-up
+  const [showToast, setShowToast] = useState(false);
+  const [toastMessage, setToastMessage] = useState('');
+
+  // Charger l'avatar de l'utilisateur
+  React.useEffect(() => {
+    const loadUserAvatar = async () => {
+      if (!user) return;
+      
+      try {
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('avatar_url')
+          .eq('user_id', user.id)
+          .single();
+        
+        if (profile?.avatar_url) {
+          setUserAvatar(profile.avatar_url);
+        }
+      } catch (error) {
+        console.log('Avatar par défaut utilisé');
+      }
+    };
+    
+    loadUserAvatar();
+  }, [user]);
 
   // Animation d'ouverture
   React.useEffect(() => {
@@ -74,6 +118,79 @@ export const ReactionSheet: React.FC<ReactionSheetProps> = ({
     transform: [{ translateY: translateY.value }],
   }));
 
+  // Fonctions pour gérer les réactions
+  const handleEmojiSelect = (emoji: string) => {
+    setSelectedEmoji(selectedEmoji === emoji ? null : emoji);
+  };
+
+  const handlePhotoUpload = async () => {
+    if (!user) return;
+    
+    setIsUploading(true);
+    try {
+      const result = await UploadService.uploadReaction(user.id, placeId);
+      if (result.success && result.url) {
+        setSelectedPhoto(result.url);
+        // Pas de notification Apple - le texte s'adapte automatiquement
+      } else {
+        console.error('❌ Erreur upload photo:', result.error);
+      }
+    } catch (error) {
+      console.error('❌ Erreur upload photo:', error);
+    } finally {
+      setIsUploading(false);
+    }
+  };
+
+  const handleSendReaction = async () => {
+    if (!user) return;
+    
+    // Vérifier qu'il y a au moins une réaction
+    if (!selectedEmoji && !selectedPhoto && !comment.trim()) {
+      showToastMessage('Ajoute au moins une réaction !');
+      return;
+    }
+    
+    setIsSending(true);
+    try {
+      const reactionData: ReactionData = {
+        emoji: selectedEmoji || undefined,
+        photo: selectedPhoto || undefined,
+        caption: comment.trim() || undefined,
+        comment: comment.trim() || undefined
+      };
+      
+      const result = await ReactionsService.sendReaction(user.id, placeId, reactionData);
+      
+      if (result.success) {
+        showToastMessage('Réaction envoyée !');
+        // Reset et fermer
+        setSelectedEmoji(null);
+        setSelectedPhoto(null);
+        setComment('');
+        onClose();
+      } else {
+        showToastMessage(result.error || 'Impossible d\'envoyer la réaction');
+      }
+    } catch (error) {
+      showToastMessage('Impossible d\'envoyer la réaction');
+    } finally {
+      setIsSending(false);
+    }
+  };
+
+  const hasContent = selectedEmoji || selectedPhoto || comment.trim();
+  const canSend = hasContent && !isSending && !isUploading;
+
+  // Fonction pour afficher le toast
+  const showToastMessage = (message: string) => {
+    setToastMessage(message);
+    setShowToast(true);
+    setTimeout(() => {
+      setShowToast(false);
+    }, 3000);
+  };
+
   if (!isVisible) return null;
 
   return (
@@ -106,41 +223,110 @@ export const ReactionSheet: React.FC<ReactionSheetProps> = ({
 
           {/* Contenu */}
           <View style={styles.content}>
-            <Text style={styles.question}>Partage ton expérience à ton matcha crew</Text>
+            <Text style={styles.question}>Il était comment ce matcha ?</Text>
             
-            {/* Boutons d'ajout de contenu */}
-            <View style={styles.addContentSection}>
-              <TouchableOpacity style={styles.addButton}>
-                <Text style={styles.addButtonIcon}>📸</Text>
-                <Text style={styles.addButtonText}>Ajoute une photo !</Text>
-              </TouchableOpacity>
-              
-              <TouchableOpacity style={styles.addButton}>
-                <Text style={styles.addButtonIcon}>💬</Text>
-                <Text style={styles.addButtonText}>Ajoute un commentaire !</Text>
+            {/* Avatar Instagram Style */}
+            <View style={styles.instagramSection}>
+              <TouchableOpacity 
+                style={styles.avatarContainer}
+                onPress={handlePhotoUpload}
+                disabled={isUploading}
+              >
+                <View style={styles.avatarWrapper}>
+                  <Image 
+                    source={{ uri: selectedPhoto || userAvatar }} 
+                    style={styles.avatarImage}
+                  />
+                  {!selectedPhoto && (
+                    <View style={styles.addIconContainer}>
+                      <Text style={styles.addIcon}>+</Text>
+                    </View>
+                  )}
+                  
+                  {/* Bouton supprimer - Style Instagram Stories */}
+                  {selectedPhoto && (
+                    <TouchableOpacity 
+                      style={styles.removePhotoButton}
+                      onPress={() => setSelectedPhoto(null)}
+                    >
+                      <X size={8} color="#FFFFFF" />
+                    </TouchableOpacity>
+                  )}
+                </View>
+                <Text style={styles.avatarText}>
+                  {selectedPhoto ? 'Belle photo !' : 'Ajoute une photo !'}
+                </Text>
               </TouchableOpacity>
             </View>
             
+            
             {/* 3 boutons de réaction */}
             <View style={styles.reactionsContainer}>
-              <TouchableOpacity style={styles.reactionButton}>
+              <TouchableOpacity 
+                style={[styles.reactionButton, selectedEmoji === '😞' && styles.reactionButtonActive]}
+                onPress={() => handleEmojiSelect('😞')}
+              >
                 <Text style={styles.reactionEmoji}>😞</Text>
                 <Text style={styles.reactionText}>Pas bien</Text>
               </TouchableOpacity>
               
-              <TouchableOpacity style={styles.reactionButton}>
+              <TouchableOpacity 
+                style={[styles.reactionButton, selectedEmoji === '😐' && styles.reactionButtonActive]}
+                onPress={() => handleEmojiSelect('😐')}
+              >
                 <Text style={styles.reactionEmoji}>😐</Text>
                 <Text style={styles.reactionText}>Correct</Text>
               </TouchableOpacity>
               
-              <TouchableOpacity style={styles.reactionButton}>
+              <TouchableOpacity 
+                style={[styles.reactionButton, selectedEmoji === '😍' && styles.reactionButtonActive]}
+                onPress={() => handleEmojiSelect('😍')}
+              >
                 <Text style={styles.reactionEmoji}>😍</Text>
                 <Text style={styles.reactionText}>Excellent</Text>
+              </TouchableOpacity>
+            </View>
+            
+            {/* Zone de commentaire Instagram-like */}
+            <View style={styles.commentSection}>
+              <TextInput
+                style={styles.commentInput}
+                value={comment}
+                onChangeText={setComment}
+                placeholder="Ajoute un message..."
+                placeholderTextColor="#999"
+                maxLength={50}
+                multiline={false}
+                returnKeyType="done"
+              />
+              <Text style={styles.characterCount}>{comment.length}/50</Text>
+            </View>
+            
+            {/* Bouton Envoyer - Instagramable */}
+            <View style={styles.sendSection}>
+              <TouchableOpacity 
+                style={[styles.sendButton, canSend && styles.sendButtonActive]}
+                onPress={handleSendReaction}
+                disabled={!canSend}
+              >
+                <Send size={20} color={canSend ? "#FFFFFF" : "#999"} />
+                <Text style={[styles.sendButtonText, canSend && styles.sendButtonTextActive]}>
+                  {isSending ? 'Envoi...' : 'Envoyer'}
+                </Text>
               </TouchableOpacity>
             </View>
           </View>
         </Animated.View>
       </GestureDetector>
+      
+      {/* Toast Instagram-like */}
+      {showToast && (
+        <View style={styles.toastContainer}>
+          <View style={styles.toast}>
+            <Text style={styles.toastText}>{toastMessage}</Text>
+          </View>
+        </View>
+      )}
     </View>
   );
 };
@@ -168,7 +354,7 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.15,
     shadowRadius: 12,
     elevation: 8,
-    maxHeight: SCREEN_HEIGHT * 0.5,
+    maxHeight: SCREEN_HEIGHT * 0.9,
   },
   dragHandle: {
     position: 'absolute',
@@ -215,8 +401,12 @@ const styles = StyleSheet.create({
     elevation: 2,
   },
   content: {
-    padding: 20,
-    alignItems: 'center',
+    paddingHorizontal: 10,
+    paddingVertical: 20,
+    alignItems: 'stretch', // Permet aux enfants de prendre toute la largeur
+    paddingBottom: 20,
+    flex: 1,
+    position: 'relative',
   },
   question: {
     fontSize: 18,
@@ -260,10 +450,202 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: '#7da06b',
   },
+  addButtonActive: {
+    backgroundColor: '#7da06b',
+  },
+  addButtonTextActive: {
+    color: '#FFFFFF',
+  },
+  // Styles Instagram
+  instagramSection: {
+    alignItems: 'center',
+    marginVertical: 20,
+    position: 'relative',
+  },
+  avatarContainer: {
+    alignItems: 'center',
+  },
+  avatarWrapper: {
+    position: 'relative',
+    marginBottom: 8,
+  },
+  avatarImage: {
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    borderWidth: 2,
+    borderColor: '#7da06b',
+  },
+  addIconContainer: {
+    position: 'absolute',
+    bottom: 0,
+    right: 0,
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    backgroundColor: '#7da06b',
+    borderWidth: 2,
+    borderColor: '#FFFFFF',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  addIcon: {
+    color: '#FFFFFF',
+    fontSize: 16,
+    fontWeight: 'bold',
+  },
+  avatarText: {
+    fontSize: 14,
+    color: '#7da06b',
+    fontWeight: '500',
+  },
+  removePhotoButton: {
+    position: 'absolute',
+    top: -6,
+    right: -6,
+    width: 12,
+    height: 12,
+    borderRadius: 6,
+    backgroundColor: 'rgba(0, 0, 0, 0.7)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 1,
+    },
+    shadowOpacity: 0.3,
+    shadowRadius: 2,
+    elevation: 3,
+    zIndex: 10,
+  },
+  selectedPhotoContainer: {
+    position: 'relative',
+    marginVertical: 16,
+    borderRadius: 12,
+    overflow: 'hidden',
+  },
+  selectedPhoto: {
+    width: '100%',
+    height: 200,
+    borderRadius: 12,
+  },
+  removePhotoButton: {
+    position: 'absolute',
+    top: 8,
+    right: 8,
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: 'rgba(0,0,0,0.6)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  commentSection: {
+    marginVertical: 16,
+  },
+  commentInput: {
+    backgroundColor: '#F8F9FA',
+    borderRadius: 12,
+    padding: 16,
+    fontSize: 16,
+    color: '#333',
+    minHeight: 80,
+    textAlignVertical: 'top',
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+  },
+  commentCounter: {
+    textAlign: 'right',
+    fontSize: 12,
+    color: '#999',
+    marginTop: 4,
+  },
+  reactionButtonActive: {
+    backgroundColor: '#7da06b',
+    borderColor: '#7da06b',
+  },
+  sendSection: {
+    marginTop: 8, // Réduit l'écart entre la zone de texte et le bouton
+    alignItems: 'center', // Centre le bouton
+    paddingBottom: 8,
+  },
+  sendButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#E5E7EB',
+    paddingHorizontal: 24,
+    paddingVertical: 12,
+    borderRadius: 25,
+    gap: 8,
+  },
+  sendButtonActive: {
+    backgroundColor: '#7da06b',
+    shadowColor: '#7da06b',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 6,
+  },
+  sendButtonText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#999',
+  },
+  sendButtonTextActive: {
+    color: '#FFFFFF',
+  },
+  // Styles pour la zone de commentaire
+  commentSection: {
+    marginTop: 16,
+    marginBottom: 8, // Réduit l'écart avec le bouton Envoyer
+    paddingHorizontal: 35, // Réduction très légère de la largeur
+  },
+  commentInput: {
+    backgroundColor: '#F8F9FA',
+    borderRadius: 20,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    fontSize: 16,
+    color: '#333',
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+    textAlignVertical: 'center',
+    width: '100%',
+  },
+  characterCount: {
+    textAlign: 'right',
+    fontSize: 12,
+    color: '#999',
+    marginTop: 4,
+  },
+  // Styles pour le toast Instagram-like
+  toastContainer: {
+    position: 'absolute',
+    top: 100,
+    left: 20,
+    right: 20,
+    alignItems: 'center',
+    zIndex: 1001,
+  },
+  toast: {
+    backgroundColor: 'rgba(0, 0, 0, 0.8)',
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    borderRadius: 20,
+    maxWidth: '80%',
+  },
+  toastText: {
+    color: '#FFFFFF',
+    fontSize: 14,
+    fontWeight: '500',
+    textAlign: 'center',
+  },
   reactionsContainer: {
     flexDirection: 'row',
     gap: 16,
     justifyContent: 'center',
+    marginVertical: 16,
   },
   reactionButton: {
     alignItems: 'center',

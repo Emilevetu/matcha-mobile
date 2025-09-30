@@ -230,6 +230,7 @@ export const PlaceSheet: React.FC = () => {
         isVisible={showReactionSheet}
         onClose={() => setShowReactionSheet(false)}
         placeName={selectedPlace.name}
+        placeId={selectedPlace.id}
       />
     </>
   );

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -7,6 +7,7 @@ import {
   TouchableOpacity,
   TextInput,
   Image,
+  Keyboard,
 } from 'react-native';
 import { X, Send, Camera, MessageCircle } from 'react-native-feather';
 import { UploadService } from '../services/uploadService';
@@ -51,6 +52,28 @@ export const ReactionSheet: React.FC<ReactionSheetProps> = ({
   // État pour le pop-up
   const [showToast, setShowToast] = useState(false);
   const [toastMessage, setToastMessage] = useState('');
+  
+  // États pour le layer flottant
+  const [showFloatingInput, setShowFloatingInput] = useState(false);
+  const [floatingText, setFloatingText] = useState('');
+  const [keyboardHeight, setKeyboardHeight] = useState(0);
+
+  // Détection du clavier
+  useEffect(() => {
+    const keyboardDidShowListener = Keyboard.addListener('keyboardDidShow', (e) => {
+      setKeyboardHeight(e.endCoordinates.height);
+    });
+    
+    const keyboardDidHideListener = Keyboard.addListener('keyboardDidHide', () => {
+      setKeyboardHeight(0);
+      setShowFloatingInput(false);
+    });
+
+    return () => {
+      keyboardDidShowListener.remove();
+      keyboardDidHideListener.remove();
+    };
+  }, []);
 
   // Charger l'avatar de l'utilisateur
   React.useEffect(() => {
@@ -191,6 +214,21 @@ export const ReactionSheet: React.FC<ReactionSheetProps> = ({
     }, 3000);
   };
 
+  // Gestion du focus du TextInput
+  const handleTextInputFocus = () => {
+    setShowFloatingInput(true);
+    setFloatingText(comment);
+  };
+
+  const handleFloatingTextChange = (text: string) => {
+    setFloatingText(text);
+    setComment(text);
+  };
+
+  const handleFloatingBlur = () => {
+    setShowFloatingInput(false);
+  };
+
   if (!isVisible) return null;
 
   return (
@@ -289,16 +327,17 @@ export const ReactionSheet: React.FC<ReactionSheetProps> = ({
             
             {/* Zone de commentaire Instagram-like */}
             <View style={styles.commentSection}>
-              <TextInput
-                style={styles.commentInput}
-                value={comment}
-                onChangeText={setComment}
-                placeholder="Ajoute un message..."
-                placeholderTextColor="#999"
-                maxLength={50}
-                multiline={false}
-                returnKeyType="done"
-              />
+                  <TextInput
+                    style={styles.commentInput}
+                    value={comment}
+                    onChangeText={setComment}
+                    placeholder="Ajoute un message..."
+                    placeholderTextColor="#999"
+                    maxLength={50}
+                    multiline={false}
+                    returnKeyType="done"
+                    onFocus={handleTextInputFocus}
+                  />
               <Text style={styles.characterCount}>{comment.length}/50</Text>
             </View>
             
@@ -326,6 +365,34 @@ export const ReactionSheet: React.FC<ReactionSheetProps> = ({
             <Text style={styles.toastText}>{toastMessage}</Text>
           </View>
         </View>
+      )}
+      
+      {/* Layer flottant pour le clavier */}
+      {showFloatingInput && (
+        <Animated.View 
+          style={[
+            styles.floatingInputContainer,
+            {
+              bottom: keyboardHeight + 20,
+            }
+          ]}
+        >
+          <View style={styles.floatingInputWrapper}>
+            <TextInput
+              style={styles.floatingInput}
+              value={floatingText}
+              onChangeText={handleFloatingTextChange}
+              placeholder="Ajoute un message..."
+              placeholderTextColor="#999"
+              maxLength={50}
+              multiline={false}
+              returnKeyType="done"
+              onBlur={handleFloatingBlur}
+              autoFocus={true}
+            />
+            <Text style={styles.floatingCharacterCount}>{floatingText.length}/50</Text>
+          </View>
+        </Animated.View>
       )}
     </View>
   );
@@ -640,6 +707,39 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '500',
     textAlign: 'center',
+  },
+  // Styles pour le layer flottant
+  floatingInputContainer: {
+    position: 'absolute',
+    left: 20,
+    right: 20,
+    zIndex: 1002,
+  },
+  floatingInputWrapper: {
+    backgroundColor: 'rgba(0, 0, 0, 0.8)',
+    borderRadius: 20,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  floatingInput: {
+    flex: 1,
+    color: '#FFFFFF',
+    fontSize: 16,
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    backgroundColor: 'rgba(255, 255, 255, 0.1)',
+    borderRadius: 15,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.2)',
+  },
+  floatingCharacterCount: {
+    color: '#FFFFFF',
+    fontSize: 12,
+    marginLeft: 8,
+    opacity: 0.7,
   },
   reactionsContainer: {
     flexDirection: 'row',

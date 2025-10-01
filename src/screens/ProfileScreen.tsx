@@ -2,10 +2,11 @@ import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, Image, TextInput, ScrollView, Alert, ActivityIndicator } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { useAuth } from '../contexts/AuthContext';
-import { Camera, Edit3, User, Mail, ArrowLeft, Check, X } from 'react-native-feather';
+import { Camera, Edit3, User, Mail, Check, X } from 'react-native-feather';
 import { supabase, Profile } from '../services/supabase';
 import { UploadService } from '../services/uploadService';
 import { UsernameValidator, UsernameValidationResult } from '../services/usernameValidation';
+import { useProfileStats } from '../hooks/useProfileStats';
 
 const ProfileScreen = () => {
   const { user, signOut } = useAuth();
@@ -21,6 +22,9 @@ const ProfileScreen = () => {
   const [usernameValidation, setUsernameValidation] = useState<UsernameValidationResult>({ isValid: true });
   const [isValidatingUsername, setIsValidatingUsername] = useState(false);
   const [usernameError, setUsernameError] = useState<string | null>(null);
+
+  // Hook pour les statistiques du profil
+  const { data: profileStats, isLoading: statsLoading } = useProfileStats(user?.id || '');
 
   // Charger le profil utilisateur
   useEffect(() => {
@@ -194,20 +198,8 @@ const ProfileScreen = () => {
 
   return (
     <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
-      {/* Header Instagramable */}
-      <View style={styles.header}>
-        <TouchableOpacity 
-          style={styles.backButton}
-          onPress={() => navigation.goBack()}
-        >
-          <ArrowLeft size={24} color="#7da06b" />
-        </TouchableOpacity>
-        <View style={styles.headerContent}>
-          <Text style={styles.title}>Mon Profil</Text>
-          <Text style={styles.subtitle}>Matcha Crew</Text>
-        </View>
-        <View style={styles.headerSpacer} />
-      </View>
+      {/* Espace entre header et photo de profil */}
+      <View style={styles.headerSpacing} />
 
       {/* Photo de profil avec effet Instagram */}
       <View style={styles.profileSection}>
@@ -318,15 +310,21 @@ const ProfileScreen = () => {
         {/* Stats Instagramables */}
         <View style={styles.statsContainer}>
           <View style={styles.statItem}>
-            <Text style={styles.statNumber}>12</Text>
+            <Text style={styles.statNumber}>
+              {statsLoading ? '...' : (profileStats?.placesVisited || 0)}
+            </Text>
             <Text style={styles.statLabel}>Lieux visités</Text>
           </View>
           <View style={styles.statItem}>
-            <Text style={styles.statNumber}>8</Text>
+            <Text style={styles.statNumber}>
+              {statsLoading ? '...' : (profileStats?.reactionsCount || 0)}
+            </Text>
             <Text style={styles.statLabel}>Réactions</Text>
           </View>
           <View style={styles.statItem}>
-            <Text style={styles.statNumber}>5</Text>
+            <Text style={styles.statNumber}>
+              {statsLoading ? '...' : (profileStats?.photosShared || 0)}
+            </Text>
             <Text style={styles.statLabel}>Photos partagées</Text>
           </View>
         </View>
@@ -370,35 +368,8 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: '#fefdfb',
   },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingTop: 60,
-    paddingBottom: 30,
-    paddingHorizontal: 20,
-  },
-  backButton: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: '#F8F9FA',
-    justifyContent: 'center',
-    alignItems: 'center',
-    borderWidth: 1,
-    borderColor: '#E5E7EB',
-  },
-  headerContent: {
-    flex: 1,
-    alignItems: 'center',
-  },
-  headerSpacer: {
-    width: 40,
-  },
-  title: {
-    fontSize: 28,
-    fontWeight: 'bold',
-    color: '#7da06b',
-    marginBottom: 4,
+  headerSpacing: {
+    height: 20,
   },
   subtitle: {
     fontSize: 16,

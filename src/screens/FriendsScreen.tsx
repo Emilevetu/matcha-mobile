@@ -187,7 +187,6 @@ const FriendsScreen = () => {
     >
       {/* Header Instagramable */}
       <View style={styles.header}>
-        <Text style={styles.title}>Matcha Crew</Text>
         <Text style={styles.subtitle}>Vos amis matcha</Text>
       </View>
 

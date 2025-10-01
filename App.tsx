@@ -3,7 +3,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { NavigationContainer } from '@react-navigation/native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { createStackNavigator } from '@react-navigation/stack';
-import { View, Text, StyleSheet, ActivityIndicator, TouchableOpacity } from 'react-native';
+import { View, Text, StyleSheet, ActivityIndicator, TouchableOpacity, StatusBar } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { Map, Users, Coffee, Navigation, Globe, User } from 'react-native-feather';
 import { AuthProvider, useAuth } from './src/contexts/AuthContext';
@@ -22,9 +22,38 @@ const queryClient = new QueryClient();
 // Stack Navigator pour Matcha Crew (avec navigation vers Profil)
 function MatchaCrewStack() {
   return (
-    <Stack.Navigator screenOptions={{ headerShown: false }}>
-      <Stack.Screen name="Friends" component={FriendsScreen} />
-      <Stack.Screen name="Profile" component={ProfileScreen} />
+    <Stack.Navigator 
+      screenOptions={{ 
+        headerShown: true,
+        headerTitle: 'Matcha Crew',
+        headerTitleStyle: {
+          fontSize: 28,
+          fontWeight: 'bold',
+          color: '#7da06b',
+        },
+        headerStyle: {
+          backgroundColor: '#FFFFFF',
+          height: 100,
+        },
+        headerTintColor: '#7da06b',
+      }}
+    >
+      <Stack.Screen 
+        name="Friends" 
+        component={FriendsScreen}
+        options={{
+          headerTitle: 'Matcha Crew',
+        }}
+      />
+      <Stack.Screen 
+        name="Profile" 
+        component={ProfileScreen}
+        options={{
+          headerTitle: 'Mon Profil',
+          headerBackTitle: '',
+          headerBackTitleVisible: false,
+        }}
+      />
     </Stack.Navigator>
   );
 }
@@ -99,6 +128,9 @@ function MainApp() {
           name="Matcha Crew" 
           component={MatchaCrewStack}
           options={{
+            headerShown: false,
+            header: () => null,
+            headerTitle: '',
             tabBarIcon: ({ focused }) => (
               <View style={[styles.tabIcon, focused && styles.activeTab]}>
                 <Users 

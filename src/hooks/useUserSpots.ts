@@ -58,7 +58,7 @@ export const useUserSpots = () => {
       }
     },
     enabled: !!user, // Seulement si l'utilisateur est connecté
-    staleTime: 2 * 60 * 1000, // 2 minutes
-    cacheTime: 5 * 60 * 1000, // 5 minutes
+    staleTime: 0, // Pas de cache - toujours frais
+    cacheTime: 0, // Pas de cache - toujours frais
   });
 };

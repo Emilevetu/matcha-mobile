@@ -3,6 +3,7 @@ import { View, Text, StyleSheet, SafeAreaView, Button, Alert, TouchableOpacity, 
 import { Map, MapMarker } from '../map/Map';
 import { usePlaces } from '../hooks/usePlaces';
 import { useUserSpots } from '../hooks/useUserSpots';
+import { useQueryClient } from '@tanstack/react-query';
 import type { MapRef } from '../map/Map.types';
 import * as Location from 'expo-location';
 import { PlaceSheet } from '../components/PlaceSheet';
@@ -14,6 +15,7 @@ const MapScreen = () => {
   const { data: places, isLoading, error } = usePlaces();
   const { data: userSpots, isLoading: loadingUserSpots } = useUserSpots();
   const { selectedPlace, setSelectedPlace } = usePlace();
+  const queryClient = useQueryClient();
   const [userLocation, setUserLocation] = useState<{latitude: number, longitude: number} | null>(null);
   const [locationLoading, setLocationLoading] = useState(false);
   const [selectedFilter, setSelectedFilter] = useState<'globe' | 'group' | 'user'>('group');
@@ -180,10 +182,14 @@ const MapScreen = () => {
           <Users width={20} height={20} color={selectedFilter === 'group' ? '#FFFFFF' : '#8B8B8B'} />
         </TouchableOpacity>
         
-        <TouchableOpacity 
-          style={[styles.filterButton, selectedFilter === 'user' && styles.selectedFilter]}
-          onPress={() => setSelectedFilter('user')}
-        >
+          <TouchableOpacity 
+            style={[styles.filterButton, selectedFilter === 'user' && styles.selectedFilter]}
+            onPress={() => {
+              setSelectedFilter('user');
+              // Rafraîchir les spots utilisateur à chaque clic
+              queryClient.invalidateQueries({ queryKey: ['userSpots'] });
+            }}
+          >
           <User width={20} height={20} color={selectedFilter === 'user' ? '#FFFFFF' : '#8B8B8B'} />
         </TouchableOpacity>
         </View>

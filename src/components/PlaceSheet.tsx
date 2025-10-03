@@ -8,7 +8,7 @@ import {
   Image,
   ScrollView,
 } from 'react-native';
-import { MapPin, Clock, Heart, Bookmark, Share, X } from 'react-native-feather';
+import { MapPin, Clock, Heart, Bookmark, Share, X, Users } from 'react-native-feather';
 import { ReactionSheet } from './ReactionSheet';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import Animated, {
@@ -19,6 +19,9 @@ import Animated, {
   runOnJS,
 } from 'react-native-reanimated';
 import { usePlace } from '../contexts/PlaceContext';
+import { usePlaceStats } from '../hooks/usePlaceStats';
+import { usePlaceBadges } from '../hooks/usePlaceBadges';
+import { BadgeSelector } from './BadgeSelector';
 
 const { height: screenHeight } = Dimensions.get('window');
 const HALF_HEIGHT = Math.round(screenHeight * 0.5);
@@ -29,6 +32,9 @@ export const PlaceSheet: React.FC = () => {
   const { selectedPlace, setSelectedPlace } = usePlace();
   const [isFullScreen, setIsFullScreen] = useState(false);
   const [showReactionSheet, setShowReactionSheet] = useState(false);
+  const [showBadgeSelector, setShowBadgeSelector] = useState(false);
+  const { data: placeStats, isLoading: isLoadingStats } = usePlaceStats(selectedPlace?.id || '');
+  const { data: placeBadges, isLoading: isLoadingBadges } = usePlaceBadges(selectedPlace?.id || '');
 
   // Debug log pour vérifier l'état
   React.useEffect(() => {
@@ -146,7 +152,21 @@ export const PlaceSheet: React.FC = () => {
           <View style={styles.dragHandle} />
           
           <View style={styles.header} pointerEvents="box-none">
+            {/* Avatar du lieu */}
+            {selectedPlace.photos && (
+              <View style={styles.avatarContainer}>
+                <Image 
+                  source={{ uri: selectedPlace.photos.split('|')[0] }}
+                  style={styles.placeAvatar}
+                  resizeMode="cover"
+                />
+              </View>
+            )}
+            
+            {/* Titre du lieu */}
             <Text style={styles.headerTitle} numberOfLines={1}>{selectedPlace.name}</Text>
+            
+            {/* Bouton fermer */}
             <TouchableOpacity
               style={styles.closeTopButton}
               onPress={() => setSelectedPlace(null)}
@@ -169,17 +189,71 @@ export const PlaceSheet: React.FC = () => {
             showsVerticalScrollIndicator={false}
             scrollEnabled={isFullScreen}
           >
-            {/* Image principale */}
-            {selectedPlace.photos && (
-              <View style={styles.imageContainer}>
-                <Image 
-                  source={{ uri: selectedPlace.photos.split('|')[0] }}
-                  style={styles.mainImage}
-                  resizeMode="cover"
-                />
-              </View>
-            )}
             
+            {/* Badges du lieu */}
+            <View style={styles.badgesSection}>
+              {/* Section Badges Communauté */}
+              <View style={styles.badgesSubSection}>
+                <Text style={styles.sectionTitle}>Badges Communauté</Text>
+                {!isLoadingBadges && placeBadges && placeBadges.topBadges.length > 0 ? (
+                  <View style={styles.badgesContainer}>
+                    {placeBadges.topBadges.map((badge, index) => (
+                      <View
+                        key={badge.badge_id}
+                        style={[
+                          styles.badge,
+                          { backgroundColor: badge.badge_color }
+                        ]}
+                      >
+                        <Text style={styles.badgeText}>{badge.badge_name}</Text>
+                      </View>
+                    ))}
+                  </View>
+                ) : (
+                  <View style={styles.noBadgesContainer}>
+                    <View style={styles.noBadgesBadge}>
+                      <Text style={styles.noBadgesText}>Pas encore de détails</Text>
+                    </View>
+                  </View>
+                )}
+              </View>
+
+              {/* Section Badges Personnels */}
+              <View style={styles.badgesSubSection}>
+                <Text style={styles.sectionTitle}>Mes Badges</Text>
+                {!isLoadingBadges && placeBadges && placeBadges.userBadges.length > 0 ? (
+                  <View style={styles.badgesContainer}>
+                    {placeBadges.userBadges.map((userBadge, index) => (
+                      <View
+                        key={userBadge.id}
+                        style={[
+                          styles.badge,
+                          { backgroundColor: userBadge.badge.color }
+                        ]}
+                      >
+                        <Text style={styles.badgeText}>{userBadge.badge.name}</Text>
+                      </View>
+                    ))}
+                    <TouchableOpacity
+                      style={styles.addBadgeButton}
+                      onPress={() => setShowBadgeSelector(true)}
+                    >
+                      <Text style={styles.addBadgeText}>+</Text>
+                    </TouchableOpacity>
+                  </View>
+                ) : (
+                  <View style={styles.noBadgesContainer}>
+                    <TouchableOpacity
+                      style={styles.addBadgeButtonLong}
+                      onPress={() => setShowBadgeSelector(true)}
+                    >
+                      <Text style={styles.addBadgeTextLong}>Ajoute tes badges</Text>
+                    </TouchableOpacity>
+                  </View>
+                )}
+              </View>
+            </View>
+
             {/* Informations du lieu */}
             <View style={styles.infoSection}>
               {/* Adresse */}
@@ -193,6 +267,16 @@ export const PlaceSheet: React.FC = () => {
                 <View style={styles.infoRow}>
                   <Clock size={20} color="#7da06b" />
                   <Text style={styles.infoText}>{selectedPlace.hours}</Text>
+                </View>
+              )}
+
+              {/* Statistiques du lieu */}
+              {!isLoadingStats && placeStats && (
+                <View style={styles.infoRow}>
+                  <Users size={20} color="#7da06b" />
+                  <Text style={styles.infoText}>
+                    {placeStats.totalInteractions.toLocaleString('fr-FR')} personnes sont allées boire ce matcha
+                  </Text>
                 </View>
               )}
             </View>
@@ -245,6 +329,20 @@ export const PlaceSheet: React.FC = () => {
         placeName={selectedPlace.name}
         placeId={selectedPlace.id}
       />
+
+      {/* BadgeSelector modal */}
+      {showBadgeSelector && (
+        <BadgeSelector
+          visible={showBadgeSelector}
+          onClose={() => setShowBadgeSelector(false)}
+          placeId={selectedPlace.id}
+          userBadges={placeBadges?.userBadges.map(b => b.badge_id) || []}
+          onBadgeAdded={() => {
+            // Refresh automatique via le hook usePlaceBadges
+            console.log('Badge ajouté, refresh automatique');
+          }}
+        />
+      )}
     </>
   );
 };
@@ -291,13 +389,26 @@ const styles = StyleSheet.create({
     paddingTop: 20,
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
     backgroundColor: 'white',
+  },
+  avatarContainer: {
+    width: 54, // 60 * 0.9
+    height: 54, // 60 * 0.9
+    borderRadius: 27, // 30 * 0.9
+    borderWidth: 3,
+    borderColor: '#7da06b',
+    marginRight: 12,
+    overflow: 'hidden',
+  },
+  placeAvatar: {
+    width: '100%',
+    height: '100%',
   },
   headerTitle: {
     flex: 1,
     fontSize: 18,
     fontWeight: '700',
+    marginRight: 12,
   },
   closeTopButton: {
     width: 32,
@@ -321,14 +432,78 @@ const styles = StyleSheet.create({
     padding: 16,
     flex: 1,
   },
-  imageContainer: {
-    marginBottom: 16,
-    borderRadius: 12,
-    overflow: 'hidden',
+  badgesSection: {
+    marginBottom: 20,
+    marginTop: 8,
   },
-  mainImage: {
-    width: '100%',
-    height: 200,
+  badgesSubSection: {
+    marginBottom: 16,
+  },
+  sectionTitle: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#7da06b',
+    marginBottom: 8,
+  },
+  badgesContainer: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+  },
+  badge: {
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 16,
+  },
+  badgeText: {
+    color: '#FFFFFF',
+    fontSize: 12,
+    fontWeight: '500',
+  },
+  addBadgeButton: {
+    width: 32,
+    height: 24,
+    borderRadius: 16,
+    backgroundColor: '#7da06b',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  addBadgeText: {
+    color: '#FFFFFF',
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  addBadgeButtonLong: {
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 16,
+    backgroundColor: '#7da06b',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  addBadgeTextLong: {
+    color: '#FFFFFF',
+    fontSize: 12,
+    fontWeight: '600',
+  },
+  noBadgesContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    justifyContent: 'center',
+  },
+  noBadgesBadge: {
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 16,
+    backgroundColor: '#F0F0F0',
+    borderWidth: 1,
+    borderColor: '#D0D0D0',
+  },
+  noBadgesText: {
+    color: '#888888',
+    fontSize: 12,
+    fontWeight: '500',
   },
   infoSection: {
     gap: 12,

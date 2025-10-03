@@ -51,7 +51,6 @@ function MatchaCrewStack() {
         options={{
           headerTitle: 'Mon Profil',
           headerBackTitle: '',
-          headerBackTitleVisible: false,
         }}
       />
     </Stack.Navigator>
@@ -82,7 +81,7 @@ function MainApp() {
       {!selectedPlace && (
         <View style={styles.centralButton}>
           <TouchableOpacity style={styles.matchaButton}>
-            <Coffee size={28} color="#FFFFFF" />
+            <Coffee width={28} height={28} color="#FFFFFF" />
           </TouchableOpacity>
         </View>
       )}
@@ -112,9 +111,10 @@ function MainApp() {
           options={{
             headerShown: false,
             tabBarIcon: ({ focused }) => (
-              <View style={[styles.tabIcon, focused && styles.activeTab]}>
+              <View style={styles.tabIcon}>
                 <Map 
-                  size={24} 
+                  width={24} 
+                  height={24}
                   color={focused ? '#F6B7C0' : '#8B8B8B'} 
                 />
               </View>
@@ -132,9 +132,10 @@ function MainApp() {
             header: () => null,
             headerTitle: '',
             tabBarIcon: ({ focused }) => (
-              <View style={[styles.tabIcon, focused && styles.activeTab]}>
+              <View style={styles.tabIcon}>
                 <Users 
-                  size={24} 
+                  width={24} 
+                  height={24}
                   color={focused ? '#F6B7C0' : '#8B8B8B'} 
                 />
               </View>

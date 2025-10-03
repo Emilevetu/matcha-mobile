@@ -10,7 +10,7 @@ export const usePlaces = () => {
       try {
         const { data, error } = await supabase
           .from('places')
-          .select('*');
+          .select('id, name, address, lat, lng, photos');
 
         console.log('📊 usePlaces - Réponse Supabase:', { 
           dataLength: data?.length, 

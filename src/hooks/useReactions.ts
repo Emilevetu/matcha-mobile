@@ -7,7 +7,7 @@ export const useReactions = (placeId: string) => {
     queryFn: async (): Promise<Reaction[]> => {
       const { data, error } = await supabase
         .from('reactions')
-        .select('*')
+        .select('id, emoji, photo, comment, created_at, user_id')
         .eq('place_id', placeId)
         .order('created_at', { ascending: false });
 
@@ -18,6 +18,9 @@ export const useReactions = (placeId: string) => {
       return data || [];
     },
     enabled: !!placeId,
+    // ✅ OPTIMISATION : Cache pour 2 minutes (réactions changent plus souvent)
+    staleTime: 2 * 60 * 1000, // 2 minutes
+    cacheTime: 5 * 60 * 1000, // 5 minutes
   });
 };
 

@@ -14,6 +14,7 @@ import { UploadService } from '../services/uploadService';
 import { ReactionsService, ReactionData } from '../services/reactionsService';
 import { useAuth } from '../contexts/AuthContext';
 import { supabase } from '../services/supabase';
+import { useQueryClient } from '@tanstack/react-query';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import Animated, {
   useSharedValue,
@@ -38,6 +39,7 @@ export const ReactionSheet: React.FC<ReactionSheetProps> = ({
   placeId,
 }) => {
   const { user } = useAuth();
+  const queryClient = useQueryClient();
   const translateY = useSharedValue(SCREEN_HEIGHT);
   const context = useSharedValue({ y: 0 });
   
@@ -187,6 +189,10 @@ export const ReactionSheet: React.FC<ReactionSheetProps> = ({
       
       if (result.success) {
         showToastMessage('Réaction envoyée !');
+        
+        // ✅ INVALIDER LE CACHE DU CLASSEMENT pour mise à jour immédiate
+        queryClient.invalidateQueries({ queryKey: ['top5SpotsByHeartEyes'] });
+        
         // Reset et fermer
         setSelectedEmoji(null);
         setSelectedPhoto(null);

@@ -1,4 +1,11 @@
-import { supabase, Reaction, PlacePhoto } from './supabase';
+import { supabase } from './supabase';
+
+export interface ReactionCount {
+  placeId: string;
+  placeName: string;
+  emoji: string;
+  count: number;
+}
 
 export interface ReactionData {
   emoji?: string;
@@ -7,188 +14,191 @@ export interface ReactionData {
   comment?: string;
 }
 
-export interface ReactionWithUser extends Reaction {
-  user: {
-    id: string;
-    username: string;
-    avatar_url?: string;
-  };
+export interface ReactionResult {
+  success: boolean;
+  error?: string;
+  data?: any;
 }
 
-export interface PlacePhotoWithUser extends PlacePhoto {
-  user: {
-    id: string;
-    username: string;
-    avatar_url?: string;
-  };
+export interface SpotReactionCount {
+  placeId: string;
+  placeName: string;
+  heartEyesCount: number;
 }
 
-export const ReactionsService = {
-  // 1. Envoyer une réaction complète (emoji + photo + commentaire)
-  async sendReaction(
-    userId: string, 
-    placeId: string, 
-    data: ReactionData
-  ): Promise<{ success: boolean; error?: string }> {
+export class ReactionsService {
+  static async sendReaction(userId: string, placeId: string, reactionData: ReactionData): Promise<ReactionResult> {
     try {
-      console.log('🎯 Envoi réaction:', { userId, placeId, data });
-      
-      const results = [];
-      
-      // 1. Envoyer l'emoji si présent
-      if (data.emoji) {
-        const { error: emojiError } = await supabase
-          .from('reactions')
-          .insert({
-            user_id: userId,
-            place_id: placeId,
-            emoji: data.emoji
-          });
-        
-        if (emojiError) {
-          console.error('❌ Erreur emoji:', emojiError);
-          return { success: false, error: emojiError.message };
-        }
-        results.push('emoji');
-      }
-      
-      // 2. Envoyer la photo si présente
-      if (data.photo) {
-        const { error: photoError } = await supabase
-          .from('place_photos')
-          .insert({
-            user_id: userId,
-            place_id: placeId,
-            photo_url: data.photo,
-            caption: data.caption || null
-          });
-        
-        if (photoError) {
-          console.error('❌ Erreur photo:', photoError);
-          return { success: false, error: photoError.message };
-        }
-        results.push('photo');
-      }
-      
-      // 3. Envoyer le commentaire si présent
-      if (data.comment) {
-        const { error: commentError } = await supabase
-          .from('comments')
-          .insert({
-            user_id: userId,
-            place_id: placeId,
-            content: data.comment
-          });
-        
-        if (commentError) {
-          console.error('❌ Erreur commentaire:', commentError);
-          return { success: false, error: commentError.message };
-        }
-        results.push('comment');
-      }
-      
-      console.log('✅ Réaction envoyée:', results);
-      return { success: true };
-      
-    } catch (error) {
-      console.error('❌ Erreur envoi réaction:', error);
-      return { success: false, error: (error as Error).message };
-    }
-  },
+      console.log('💖 Envoi de réaction:', { userId, placeId, reactionData });
 
-  // 2. Récupérer les réactions d'un lieu
-  async getPlaceReactions(placeId: string): Promise<{ 
-    success: boolean; 
-    data?: { reactions: ReactionWithUser[]; photos: PlacePhotoWithUser[] }; 
-    error?: string 
-  }> {
-    try {
-      console.log('📊 Récupération réactions lieu:', placeId);
+      // Vérifier que l'utilisateur est connecté
+      const { data: { user }, error: authError } = await supabase.auth.getUser();
       
-      // Récupérer les réactions emoji
-      const { data: reactions, error: reactionsError } = await supabase
-        .from('reactions')
-        .select(`
-          *,
-          user:profiles!reactions_user_id_fkey(username, avatar_url)
-        `)
-        .eq('place_id', placeId)
-        .order('created_at', { ascending: false });
-      
-      if (reactionsError) {
-        console.error('❌ Erreur réactions:', reactionsError);
-        return { success: false, error: reactionsError.message };
+      if (authError || !user) {
+        console.error('❌ Utilisateur non connecté:', authError);
+        return { success: false, error: 'Utilisateur non connecté' };
       }
-      
-      // Récupérer les photos
-      const { data: photos, error: photosError } = await supabase
-        .from('place_photos')
-        .select(`
-          *,
-          user:profiles!place_photos_user_id_fkey(username, avatar_url)
-        `)
-        .eq('place_id', placeId)
-        .order('created_at', { ascending: false });
-      
-      if (photosError) {
-        console.error('❌ Erreur photos:', photosError);
-        return { success: false, error: photosError.message };
+
+      // Vérifier que l'utilisateur correspond
+      if (user.id !== userId) {
+        console.error('❌ ID utilisateur ne correspond pas');
+        return { success: false, error: 'Erreur d\'authentification' };
       }
-      
-      console.log('✅ Réactions récupérées:', { 
-        reactions: reactions?.length || 0, 
-        photos: photos?.length || 0 
-      });
-      
-      return { 
-        success: true, 
-        data: { 
-          reactions: reactions || [], 
-          photos: photos || [] 
-        } 
+
+      // Préparer les données à insérer
+      const insertData: any = {
+        place_id: placeId,
+        user_id: userId,
       };
-      
-    } catch (error) {
-      console.error('❌ Erreur récupération réactions:', error);
-      return { success: false, error: (error as Error).message };
-    }
-  },
 
-  // 3. Supprimer une réaction
-  async deleteReaction(reactionId: string, userId: string): Promise<{ success: boolean; error?: string }> {
-    try {
-      const { error } = await supabase
+      // Ajouter les données de réaction si elles existent
+      if (reactionData.emoji) {
+        insertData.emoji = reactionData.emoji;
+      }
+      if (reactionData.photo) {
+        insertData.photo = reactionData.photo;
+      }
+      if (reactionData.caption) {
+        insertData.caption = reactionData.caption;
+      }
+      if (reactionData.comment) {
+        insertData.comment = reactionData.comment;
+      }
+
+      console.log('📝 Données à insérer:', insertData);
+
+      // Insérer la réaction dans la base de données
+      const { data, error } = await supabase
         .from('reactions')
-        .delete()
-        .eq('id', reactionId)
-        .eq('user_id', userId);
-      
-      if (error) {
-        return { success: false, error: error.message };
-      }
-      
-      return { success: true };
-    } catch (error) {
-      return { success: false, error: (error as Error).message };
-    }
-  },
+        .insert(insertData)
+        .select()
+        .single();
 
-  // 4. Supprimer une photo
-  async deletePhoto(photoId: string, userId: string): Promise<{ success: boolean; error?: string }> {
-    try {
-      const { error } = await supabase
-        .from('place_photos')
-        .delete()
-        .eq('id', photoId)
-        .eq('user_id', userId);
-      
       if (error) {
-        return { success: false, error: error.message };
+        console.error('❌ Erreur lors de l\'insertion de la réaction:', error);
+        return { success: false, error: `Erreur lors de l'envoi: ${error.message}` };
       }
-      
-      return { success: true };
+
+      console.log('✅ Réaction envoyée avec succès:', data);
+      return { success: true, data };
+
     } catch (error) {
-      return { success: false, error: (error as Error).message };
+      console.error('❌ Erreur dans sendReaction:', error);
+      return { success: false, error: 'Erreur inattendue lors de l\'envoi' };
     }
+  }
+}
+
+export const getTop5SpotsByHeartEyes = async (): Promise<SpotReactionCount[]> => {
+  try {
+    console.log('🏆 Récupération du classement des top 5 spots par réactions yeux en cœur...');
+    
+    // ✅ OPTIMISATION : Récupérer toutes les réactions yeux en cœur en une requête
+    const { data: reactionsData, error: reactionsError } = await supabase
+      .from('reactions')
+      .select('place_id')
+      .eq('emoji', '😍');
+
+    if (reactionsError) {
+      console.error('❌ Erreur lors de la récupération des réactions:', reactionsError);
+      return [];
+    }
+
+    if (!reactionsData || reactionsData.length === 0) {
+      console.log('💖 Aucune réaction yeux en cœur trouvée');
+      return [];
+    }
+
+    console.log(`💖 ${reactionsData.length} réactions yeux en cœur trouvées`);
+
+    // Compter les réactions par place_id
+    const placeCounts = new Map<string, number>();
+    reactionsData.forEach(reaction => {
+      const placeId = reaction.place_id;
+      placeCounts.set(placeId, (placeCounts.get(placeId) || 0) + 1);
+    });
+
+    // Récupérer les noms des places en une seule requête
+    const placeIds = Array.from(placeCounts.keys());
+    const { data: placesData, error: placesError } = await supabase
+      .from('places')
+      .select('id, name')
+      .in('id', placeIds);
+
+    if (placesError) {
+      console.error('❌ Erreur lors de la récupération des places:', placesError);
+      return [];
+    }
+
+    // Créer un map des noms de places
+    const placeNames = new Map<string, string>();
+    placesData?.forEach(place => {
+      placeNames.set(place.id, place.name);
+    });
+
+    // Convertir en array et trier par nombre de réactions (décroissant)
+    const spotCounts: SpotReactionCount[] = Array.from(placeCounts.entries())
+      .map(([placeId, count]) => ({
+        placeId,
+        placeName: placeNames.get(placeId) || 'Place inconnue',
+        heartEyesCount: count
+      }))
+      .sort((a, b) => b.heartEyesCount - a.heartEyesCount);
+
+    // Prendre les top 5
+    const top5 = spotCounts.slice(0, 5);
+
+    console.log('🏆 Top 5 des spots:', top5);
+    console.log(`⚡ Optimisation: 2 requêtes au lieu de ${placeCounts.size + 1} requêtes`);
+    
+    return top5;
+  } catch (error) {
+    console.error('❌ Erreur dans getTop5SpotsByHeartEyes:', error);
+    return [];
+  }
+};
+
+export const getReactionCountForPlace = async (placeName: string, emoji: string): Promise<number> => {
+  try {
+    console.log(`🔍 Recherche des réactions pour "${placeName}" avec l'émoji "${emoji}"`);
+    
+    // 1. Trouver la place par nom
+    const { data: places, error: placesError } = await supabase
+      .from('places')
+      .select('id, name')
+      .ilike('name', `%${placeName}%`);
+
+    if (placesError) {
+      console.error('❌ Erreur lors de la recherche de places:', placesError);
+      return 0;
+    }
+
+    if (!places || places.length === 0) {
+      console.log(`📍 Aucune place trouvée avec le nom "${placeName}"`);
+      return 0;
+    }
+
+    const place = places[0];
+    console.log(`📍 Place trouvée: "${place.name}" (ID: ${place.id})`);
+
+    // 2. Récupérer les réactions pour cette place avec l'émoji spécifique
+    const { data: reactions, error: reactionsError } = await supabase
+      .from('reactions')
+      .select('emoji')
+      .eq('place_id', place.id)
+      .eq('emoji', emoji);
+
+    if (reactionsError) {
+      console.error('❌ Erreur lors de la récupération des réactions:', reactionsError);
+      return 0;
+    }
+
+    const count = reactions?.length || 0;
+    console.log(`💖 Nombre de réactions "${emoji}" pour "${place.name}": ${count}`);
+    
+    return count;
+  } catch (error) {
+    console.error('❌ Erreur dans getReactionCountForPlace:', error);
+    return 0;
   }
 };

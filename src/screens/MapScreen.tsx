@@ -1,12 +1,13 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { View, Text, StyleSheet, SafeAreaView, Button, Alert, TouchableOpacity } from 'react-native';
+import { View, Text, StyleSheet, SafeAreaView, Button, Alert, TouchableOpacity, Animated } from 'react-native';
 import { Map, MapMarker } from '../map/Map';
 import { usePlaces } from '../hooks/usePlaces';
 import type { MapRef } from '../map/Map.types';
 import * as Location from 'expo-location';
 import { PlaceSheet } from '../components/PlaceSheet';
 import { usePlace } from '../contexts/PlaceContext';
-import { Navigation, Globe, Users, User } from 'react-native-feather';
+import { Navigation, Globe, Users, User, Menu } from 'react-native-feather';
+import SlideMenuScreen from './SlideMenuScreen';
 
 const MapScreen = () => {
   const { data: places, isLoading, error } = usePlaces();
@@ -14,7 +15,29 @@ const MapScreen = () => {
   const [userLocation, setUserLocation] = useState<{latitude: number, longitude: number} | null>(null);
   const [locationLoading, setLocationLoading] = useState(false);
   const [selectedFilter, setSelectedFilter] = useState<'globe' | 'group' | 'user'>('group');
+  const [isMenuOpen, setIsMenuOpen] = useState(false);
   const mapRef = useRef<MapRef>(null);
+  const slideAnimation = useRef(new Animated.Value(-300)).current;
+
+  // Fonctions pour le menu slide
+  const openMenu = () => {
+    setIsMenuOpen(true);
+    Animated.timing(slideAnimation, {
+      toValue: 0,
+      duration: 300,
+      useNativeDriver: true,
+    }).start();
+  };
+
+  const closeMenu = () => {
+    Animated.timing(slideAnimation, {
+      toValue: -300,
+      duration: 300,
+      useNativeDriver: true,
+    }).start(() => {
+      setIsMenuOpen(false);
+    });
+  };
 
   // Suppression du recentrage automatique - seulement manuel via le bouton
 
@@ -117,6 +140,16 @@ const MapScreen = () => {
 
   return (
     <View style={styles.container}>
+      {/* Bouton Menu hamburger en haut à gauche */}
+      {!selectedPlace && (
+        <TouchableOpacity 
+          style={styles.menuButton}
+          onPress={openMenu}
+        >
+          <Menu size={20} color="#8B8B8B" />
+        </TouchableOpacity>
+      )}
+
       {/* Toggle de filtres style Poop Map */}
       {!selectedPlace && (
         <View style={styles.filterToggle}>
@@ -196,6 +229,29 @@ const MapScreen = () => {
       {/* PlaceSheet */}
       <PlaceSheet />
 
+      {/* Menu Slide depuis la gauche */}
+      {isMenuOpen && (
+        <Animated.View 
+          style={[
+            styles.slideMenuContainer,
+            {
+              transform: [{ translateX: slideAnimation }]
+            }
+          ]}
+        >
+          <SlideMenuScreen onClose={closeMenu} />
+        </Animated.View>
+      )}
+
+      {/* Overlay pour fermer le menu en cliquant à côté */}
+      {isMenuOpen && (
+        <TouchableOpacity 
+          style={styles.menuOverlay}
+          onPress={closeMenu}
+          activeOpacity={1}
+        />
+      )}
+
     </View>
   );
 };
@@ -244,11 +300,41 @@ const styles = StyleSheet.create({
     position: 'absolute',
     top: 90, // Position ajustée
     left: '50%',
-    transform: [{ translateX: -95 }], // Centre parfaitement le toggle (ajusté)
+    transform: [{ translateX: -60 }], // Centre parfaitement le toggle réduit
     flexDirection: 'row',
     backgroundColor: '#FFFFFF',
-    borderRadius: 25,
-    padding: 4, // Padding réduit (moitié de l'espace blanc)
+    borderRadius: 20, // Réduit pour correspondre à la hauteur
+    padding: 2, // Padding réduit
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
+    zIndex: 1000,
+    height: 40, // Hauteur fixe comme le bouton menu
+  },
+  filterButton: {
+    width: 36, // Largeur réduite
+    height: 36, // Hauteur réduite
+    borderRadius: 18, // Border radius ajusté
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginHorizontal: 2, // Marges réduites
+  },
+  selectedFilter: {
+    backgroundColor: '#F6B7C0', // Rose pour la sélection
+  },
+  // Styles pour le bouton menu hamburger
+  menuButton: {
+    position: 'absolute',
+    top: 90, // Même niveau que le toggle
+    left: 16, // Position en haut à gauche
+    width: 50,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: '#FFFFFF',
+    justifyContent: 'center',
+    alignItems: 'center',
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
@@ -256,16 +342,23 @@ const styles = StyleSheet.create({
     elevation: 3,
     zIndex: 1000,
   },
-  filterButton: {
-    width: 50,
-    height: 40,
-    borderRadius: 20,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginHorizontal: 6,
+  // Styles pour le menu slide
+  slideMenuContainer: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    bottom: 0, // Va jusqu'en bas de l'écran sous la tab bar
+    width: '85%', // Encore plus large
+    zIndex: 2000,
   },
-  selectedFilter: {
-    backgroundColor: '#F6B7C0', // Rose pour la sélection
+  menuOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    zIndex: 1500,
   },
 });
 

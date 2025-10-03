@@ -155,7 +155,20 @@ export const PlaceSheet: React.FC = () => {
               <X size={20} color="#7da06b" />
             </TouchableOpacity>
           </View>
-          <ScrollView style={styles.contentArea} showsVerticalScrollIndicator={false}>
+          
+          {/* Zone de drag invisible pour toute la surface en mi-screen */}
+          {!isFullScreen && (
+            <TouchableOpacity 
+              style={styles.fullDragArea}
+              activeOpacity={1}
+              onPress={() => {}} // Pas d'action, juste pour capturer les touches
+            />
+          )}
+          <ScrollView 
+            style={styles.contentArea} 
+            showsVerticalScrollIndicator={false}
+            scrollEnabled={isFullScreen}
+          >
             {/* Image principale */}
             {selectedPlace.photos && (
               <View style={styles.imageContainer}>
@@ -421,5 +434,13 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: 'bold',
     textAlign: 'center',
+  },
+  fullDragArea: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    zIndex: 1,
   },
 });

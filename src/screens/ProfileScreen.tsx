@@ -626,7 +626,7 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
   signOutButton: {
-    backgroundColor: '#F6B7C0',
+    backgroundColor: '#ffe5e2',
     paddingVertical: 16,
     paddingHorizontal: 20,
     borderRadius: 12,

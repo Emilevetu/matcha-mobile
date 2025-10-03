@@ -115,12 +115,12 @@ function MainApp() {
                 <Map 
                   width={24} 
                   height={24}
-                  color={focused ? '#F6B7C0' : '#8B8B8B'} 
+                  color={focused ? '#ffe5e2' : '#8B8B8B'} 
                 />
               </View>
             ),
             tabBarLabel: ({ focused }) => (
-              <Text style={[styles.tabLabel, { color: focused ? '#F6B7C0' : '#8B8B8B' }]}>Map</Text>
+              <Text style={[styles.tabLabel, { color: focused ? '#ffe5e2' : '#8B8B8B' }]}>Map</Text>
             ),
           }}
         />
@@ -136,12 +136,12 @@ function MainApp() {
                 <Users 
                   width={24} 
                   height={24}
-                  color={focused ? '#F6B7C0' : '#8B8B8B'} 
+                  color={focused ? '#ffe5e2' : '#8B8B8B'} 
                 />
               </View>
             ),
             tabBarLabel: ({ focused }) => (
-              <Text style={[styles.tabLabel, { color: focused ? '#F6B7C0' : '#8B8B8B' }]}>Matcha Crew</Text>
+              <Text style={[styles.tabLabel, { color: focused ? '#ffe5e2' : '#8B8B8B' }]}>Matcha Crew</Text>
             ),
           }}
         />

@@ -341,7 +341,7 @@ const styles = StyleSheet.create({
     marginHorizontal: 2, // Marges réduites
   },
   selectedFilter: {
-    backgroundColor: '#F6B7C0', // Rose pour la sélection
+    backgroundColor: '#ffe5e2', // Rose pour la sélection
   },
   // Styles pour le bouton menu hamburger
   menuButton: {

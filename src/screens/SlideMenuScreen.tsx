@@ -41,9 +41,11 @@ const SlideMenuScreen = ({ onClose }: SlideMenuScreenProps) => {
   useEffect(() => {
     const saveSpots = async () => {
       try {
+        console.log('💾 Sauvegarde des spots:', selectedSpots.map((spot, idx) => `${idx + 1}. ${spot.name}`));
         await AsyncStorage.setItem('userSelectedSpots', JSON.stringify(selectedSpots));
+        console.log('✅ Spots sauvegardés avec succès');
       } catch (error) {
-        console.error('Erreur lors de la sauvegarde des spots:', error);
+        console.error('❌ Erreur lors de la sauvegarde des spots:', error);
       }
     };
 
@@ -171,8 +173,8 @@ const SlideMenuScreen = ({ onClose }: SlideMenuScreenProps) => {
           <View style={styles.header}>
             <Text style={styles.title}>Top 5 Spots</Text>
           </View>
-          
-          <TouchableOpacity 
+
+          <TouchableOpacity
             style={styles.addSpotButton}
             onPress={() => setShowAddSpotModal(true)}
           >
@@ -184,30 +186,43 @@ const SlideMenuScreen = ({ onClose }: SlideMenuScreenProps) => {
             <View style={styles.selectedSpotsContainer}>
               <DraggableFlatList
                 data={selectedSpots}
-                onDragEnd={({ data }) => setSelectedSpots(data)}
+                onDragEnd={({ data }) => {
+                  console.log('🔄 Drag & Drop - Nouvel ordre:', data.map((item, idx) => `${idx + 1}. ${item.name}`));
+                  setSelectedSpots(data);
+                }}
                 keyExtractor={(item) => item.id}
-                renderItem={({ item, index, drag, isActive }: RenderItemParams<any>) => (
-                  <TouchableOpacity
-                    style={[styles.spotItem, isActive && styles.spotItemActive]}
-                    onLongPress={drag}
-                    delayLongPress={200}
-                  >
-                    <View style={styles.rankContainer}>
-                      <Text style={styles.rank}>#{index + 1}</Text>
-                    </View>
-                    <View style={styles.spotInfo}>
-                      <Text style={styles.spotName}>{item.name}</Text>
-                    </View>
-                    <TouchableOpacity 
-                      style={styles.deleteButton}
-                      onPress={() => {
-                        setSelectedSpots(prev => prev.filter(s => s.id !== item.id));
-                      }}
+                renderItem={(params) => {
+                  const { item, index, drag, isActive } = params;
+                  // Utiliser l'index du tableau selectedSpots comme fallback
+                  const fallbackIndex = selectedSpots.findIndex(spot => spot.id === item.id);
+                  const finalIndex = index !== undefined ? index : fallbackIndex;
+                  const rankNumber = finalIndex + 1;
+                  
+                  console.log(`📍 Rendu spot ${rankNumber}: ${item.name} (index: ${index}, fallbackIndex: ${fallbackIndex})`);
+                  
+                  return (
+                    <TouchableOpacity
+                      style={[styles.spotItem, isActive && styles.spotItemActive]}
+                      onLongPress={drag}
+                      delayLongPress={200}
                     >
-                      <X width={16} height={16} color="#FF6B6B" />
+                      <View style={styles.rankContainer}>
+                        <Text style={styles.rank}>#{rankNumber}</Text>
+                      </View>
+                      <View style={styles.spotInfo}>
+                        <Text style={styles.spotName}>{item.name}</Text>
+                      </View>
+                      <TouchableOpacity 
+                        style={styles.deleteButton}
+                        onPress={() => {
+                          setSelectedSpots(prev => prev.filter(s => s.id !== item.id));
+                        }}
+                      >
+                        <X width={16} height={16} color="#FF6B6B" />
+                      </TouchableOpacity>
                     </TouchableOpacity>
-                  </TouchableOpacity>
-                )}
+                  );
+                }}
               />
             </View>
           )}
@@ -244,7 +259,7 @@ const SlideMenuScreen = ({ onClose }: SlideMenuScreenProps) => {
           <View style={styles.modalContainer}>
             {/* Header du modal */}
             <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>Mes spots favoris 😍</Text>
+                  <Text style={styles.modalTitle}>Mes spots favoris</Text>
               <TouchableOpacity 
                 style={styles.modalCloseButton}
                 onPress={() => setShowAddSpotModal(false)}
@@ -336,7 +351,7 @@ const SlideMenuScreen = ({ onClose }: SlideMenuScreenProps) => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F6B7C0', // Rose pâle
+    backgroundColor: '#ffe5e2', // Rose pâle
     width: '85%', // Encore plus large
   },
   scrollView: {
@@ -409,6 +424,7 @@ const styles = StyleSheet.create({
   },
   spotInfo: {
     flex: 1,
+    justifyContent: 'center',
   },
   spotName: {
     fontSize: 16,
@@ -469,12 +485,12 @@ const styles = StyleSheet.create({
     marginHorizontal: 2,
   },
   selectedFilter: {
-    backgroundColor: '#F6B7C0', // Rose pour la sélection
+    backgroundColor: '#ffe5e2', // Rose pour la sélection
   },
   // Style pour la page de la personne seule
   userPage: {
     flex: 1,
-    backgroundColor: '#F6B7C0', // Rose pâle
+    backgroundColor: '#ffe5e2', // Rose pâle
   },
   // Style pour le bouton "Ajouter un spot"
   addSpotButton: {
@@ -532,7 +548,7 @@ const styles = StyleSheet.create({
     width: 32,
     height: 32,
     borderRadius: 16,
-    backgroundColor: '#F6B7C0',
+    backgroundColor: '#ffe5e2',
     alignItems: 'center',
     justifyContent: 'center',
   },

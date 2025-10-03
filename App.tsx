@@ -93,7 +93,7 @@ function MainApp() {
             borderTopWidth: 0,
             elevation: 0,
             shadowOpacity: 0,
-            height: 102, // Hauteur x1.7 plus grande (60 * 1.7 = 102)
+            height: 80, // Hauteur réduite
             position: 'absolute', // Flotte au-dessus de la map
             bottom: 0,
             left: 0,
@@ -211,7 +211,7 @@ const styles = StyleSheet.create({
   // Styles pour le bouton central matcha
   centralButton: {
     position: 'absolute',
-    bottom: 60, // Position au-dessus de la section
+    bottom: 40, // Position ajustée pour la tab bar réduite
     left: '50%',
     marginLeft: -30, // Centre le bouton (60px / 2)
     zIndex: 1000, // Au-dessus de tout

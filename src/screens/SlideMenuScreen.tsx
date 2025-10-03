@@ -1,13 +1,16 @@
-import React from 'react';
-import { View, Text, StyleSheet, SafeAreaView, ActivityIndicator, ScrollView } from 'react-native';
+import React, { useState } from 'react';
+import { View, Text, StyleSheet, SafeAreaView, ActivityIndicator, ScrollView, TouchableOpacity } from 'react-native';
 import { useQuery } from '@tanstack/react-query';
 import { getTop5SpotsByHeartEyes, SpotReactionCount } from '../services/reactionsService';
+import { Globe, User } from 'react-native-feather';
 
 interface SlideMenuScreenProps {
   onClose: () => void;
 }
 
 const SlideMenuScreen = ({ onClose }: SlideMenuScreenProps) => {
+  const [selectedFilter, setSelectedFilter] = useState<'globe' | 'user'>('globe');
+  
   // ✅ OPTIMISATION : Utilisation de React Query avec cache
   const { data: top5Spots = [], isLoading: loading, error } = useQuery({
     queryKey: ['top5SpotsByHeartEyes'],
@@ -23,43 +26,77 @@ const SlideMenuScreen = ({ onClose }: SlideMenuScreenProps) => {
 
   return (
     <SafeAreaView style={styles.container}>
-      <ScrollView style={styles.scrollView}>
+      {selectedFilter === 'globe' ? (
+        <>
+          <ScrollView style={styles.scrollView}>
             <View style={styles.header}>
               <Text style={styles.title}>Top 5 Spots</Text>
             </View>
-        
-        {loading ? (
-          <View style={styles.loadingContainer}>
-            <ActivityIndicator size="large" color="#8B4513" />
-            <Text style={styles.loadingText}>Chargement du classement...</Text>
-          </View>
-        ) : (
-          <View style={styles.rankingContainer}>
-            {top5Spots.length > 0 ? (
-              top5Spots.map((spot, index) => (
-                <View key={spot.placeId} style={styles.spotItem}>
-                  <View style={styles.rankContainer}>
-                    <Text style={styles.rank}>#{index + 1}</Text>
-                  </View>
-                  <View style={styles.spotInfo}>
-                    <Text style={styles.spotName}>{spot.placeName}</Text>
-                    <View style={styles.spotStats}>
-                      <Text style={styles.heartEyesEmoji}>😍</Text>
-                      <Text style={styles.reactionCount}>
-                        {spot.heartEyesCount} réaction{spot.heartEyesCount > 1 ? 's' : ''}
-                      </Text>
-                    </View>
-                  </View>
-                </View>
-              ))
+          
+            {loading ? (
+              <View style={styles.loadingContainer}>
+                <ActivityIndicator size="large" color="#8B4513" />
+                <Text style={styles.loadingText}>Chargement du classement...</Text>
+              </View>
             ) : (
-              <View style={styles.emptyContainer}>
-                <Text style={styles.emptyText}>Aucun spot trouvé</Text>
+              <View style={styles.rankingContainer}>
+                {top5Spots.length > 0 ? (
+                  top5Spots.map((spot, index) => (
+                    <View key={spot.placeId} style={styles.spotItem}>
+                      <View style={styles.rankContainer}>
+                        <Text style={styles.rank}>#{index + 1}</Text>
+                      </View>
+                      <View style={styles.spotInfo}>
+                        <Text style={styles.spotName}>{spot.placeName}</Text>
+                        <View style={styles.spotStats}>
+                          <Text style={styles.heartEyesEmoji}>😍</Text>
+                          <Text style={styles.reactionCount}>
+                            {spot.heartEyesCount} réaction{spot.heartEyesCount > 1 ? 's' : ''}
+                          </Text>
+                        </View>
+                      </View>
+                    </View>
+                  ))
+                ) : (
+                  <View style={styles.emptyContainer}>
+                    <Text style={styles.emptyText}>Aucun spot trouvé</Text>
+                  </View>
+                )}
               </View>
             )}
+          </ScrollView>
+        </>
+      ) : (
+        /* Page rose pour la personne seule */
+        <View style={styles.userPage}>
+          <View style={styles.header}>
+            <Text style={styles.title}>Top 5 Spots</Text>
           </View>
-        )}
-      </ScrollView>
+          
+          <TouchableOpacity style={styles.addSpotButton}>
+            <Text style={styles.addSpotButtonText}>Ajouter un spot</Text>
+          </TouchableOpacity>
+        </View>
+      )}
+      
+      {/* Toggle en bas avec même design que la map */}
+      <View style={styles.toggleContainer}>
+        <View style={styles.filterToggle}>
+          <TouchableOpacity 
+            style={[styles.filterButton, selectedFilter === 'globe' && styles.selectedFilter]}
+            onPress={() => setSelectedFilter('globe')}
+          >
+            <Globe size={20} color={selectedFilter === 'globe' ? '#FFFFFF' : '#8B8B8B'} />
+          </TouchableOpacity>
+          
+          <TouchableOpacity 
+            style={[styles.filterButton, selectedFilter === 'user' && styles.selectedFilter]}
+            onPress={() => setSelectedFilter('user')}
+          >
+            <User size={20} color={selectedFilter === 'user' ? '#FFFFFF' : '#8B8B8B'} />
+          </TouchableOpacity>
+        </View>
+      </View>
     </SafeAreaView>
   );
 };
@@ -83,7 +120,7 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 24,
     fontWeight: 'bold',
-    color: '#333333',
+    color: '#FFFFFF',
     marginBottom: 5,
   },
   subtitle: {
@@ -162,6 +199,62 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: '#666666',
     fontWeight: '500',
+  },
+  // Styles pour le toggle (même design que la map)
+  toggleContainer: {
+    position: 'absolute',
+    bottom: 120, // Au-dessus de la tab bar (qui fait ~102px)
+    left: 0,
+    right: 0,
+    alignItems: 'center',
+  },
+  filterToggle: {
+    flexDirection: 'row',
+    backgroundColor: '#FFFFFF',
+    borderRadius: 20,
+    padding: 2,
+    height: 40,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  filterButton: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginHorizontal: 2,
+  },
+  selectedFilter: {
+    backgroundColor: '#F6B7C0', // Rose pour la sélection
+  },
+  // Style pour la page de la personne seule
+  userPage: {
+    flex: 1,
+    backgroundColor: '#F6B7C0', // Rose pâle
+  },
+  // Style pour le bouton "Ajouter un spot"
+  addSpotButton: {
+    backgroundColor: '#FFFFFF',
+    paddingHorizontal: 24,
+    paddingVertical: 12,
+    borderRadius: 25,
+    marginHorizontal: 20,
+    marginTop: 20,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  addSpotButtonText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#7da06b',
+    textAlign: 'center',
   },
 });
 

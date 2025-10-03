@@ -2,6 +2,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import { View, Text, StyleSheet, SafeAreaView, Button, Alert, TouchableOpacity, Animated } from 'react-native';
 import { Map, MapMarker } from '../map/Map';
 import { usePlaces } from '../hooks/usePlaces';
+import { useUserSpots } from '../hooks/useUserSpots';
 import type { MapRef } from '../map/Map.types';
 import * as Location from 'expo-location';
 import { PlaceSheet } from '../components/PlaceSheet';
@@ -11,6 +12,7 @@ import SlideMenuScreen from './SlideMenuScreen';
 
 const MapScreen = () => {
   const { data: places, isLoading, error } = usePlaces();
+  const { data: userSpots, isLoading: loadingUserSpots } = useUserSpots();
   const { selectedPlace, setSelectedPlace } = usePlace();
   const [userLocation, setUserLocation] = useState<{latitude: number, longitude: number} | null>(null);
   const [locationLoading, setLocationLoading] = useState(false);
@@ -18,6 +20,17 @@ const MapScreen = () => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const mapRef = useRef<MapRef>(null);
   const slideAnimation = useRef(new Animated.Value(-300)).current;
+
+  // Déterminer quels spots afficher selon le toggle
+  const getFilteredSpots = (): any[] => {
+    if (selectedFilter === 'user') {
+      return (userSpots as any[]) || [];
+    }
+    return (places as any[]) || [];
+  };
+
+  const filteredSpots = getFilteredSpots();
+  const isLoadingFiltered = selectedFilter === 'user' ? loadingUserSpots : isLoading;
 
   // Fonctions pour le menu slide
   const openMenu = () => {
@@ -122,7 +135,7 @@ const MapScreen = () => {
     });
   }
 
-  if (isLoading) {
+  if (isLoadingFiltered) {
     return (
       <View style={styles.center}>
         <Text>Chargement de la carte...</Text>
@@ -146,7 +159,7 @@ const MapScreen = () => {
           style={styles.menuButton}
           onPress={openMenu}
         >
-          <Menu size={20} color="#8B8B8B" />
+                <Menu width={20} height={20} color="#8B8B8B" />
         </TouchableOpacity>
       )}
 
@@ -157,21 +170,21 @@ const MapScreen = () => {
           style={[styles.filterButton, selectedFilter === 'globe' && styles.selectedFilter]}
           onPress={() => setSelectedFilter('globe')}
         >
-          <Globe size={20} color={selectedFilter === 'globe' ? '#FFFFFF' : '#8B8B8B'} />
+          <Globe width={20} height={20} color={selectedFilter === 'globe' ? '#FFFFFF' : '#8B8B8B'} />
         </TouchableOpacity>
         
         <TouchableOpacity 
           style={[styles.filterButton, selectedFilter === 'group' && styles.selectedFilter]}
           onPress={() => setSelectedFilter('group')}
         >
-          <Users size={20} color={selectedFilter === 'group' ? '#FFFFFF' : '#8B8B8B'} />
+          <Users width={20} height={20} color={selectedFilter === 'group' ? '#FFFFFF' : '#8B8B8B'} />
         </TouchableOpacity>
         
         <TouchableOpacity 
           style={[styles.filterButton, selectedFilter === 'user' && styles.selectedFilter]}
           onPress={() => setSelectedFilter('user')}
         >
-          <User size={20} color={selectedFilter === 'user' ? '#FFFFFF' : '#8B8B8B'} />
+          <User width={20} height={20} color={selectedFilter === 'user' ? '#FFFFFF' : '#8B8B8B'} />
         </TouchableOpacity>
         </View>
       )}
@@ -185,8 +198,8 @@ const MapScreen = () => {
         showsUserLocation
         onRegionChange={() => {}}
       >
-        {places?.map((place, index) => {
-          console.log(`🗺️ Rendu marqueur ${index + 1}:`, {
+        {filteredSpots?.map((place: any, index: number) => {
+          console.log(`🗺️ Rendu marqueur ${index + 1} (${selectedFilter}):`, {
             name: place.name,
             lat: place.lat,
             lng: place.lng,
@@ -196,8 +209,8 @@ const MapScreen = () => {
             <MapMarker
               key={index}
               coordinate={{
-                latitude: place.lat,
-                longitude: place.lng,
+                latitude: place.lat || 0,
+                longitude: place.lng || 0,
               }}
               onPress={() => {
                 console.log(`📍 Clic sur marqueur ${index + 1}:`, place.name);
@@ -214,7 +227,7 @@ const MapScreen = () => {
         onPress={recenterToUserLocation}
         disabled={locationLoading}
       >
-        <Navigation size={20} color="#8B8B8B" />
+        <Navigation width={20} height={20} color="#8B8B8B" />
       </TouchableOpacity>
 
       {/* Overlay invisible pour fermer la PlaceSheet en cliquant sur la carte */}

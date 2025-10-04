@@ -129,10 +129,10 @@ const SlideMenuScreen = ({ onClose }: SlideMenuScreenProps) => {
     <SafeAreaView style={styles.container}>
       {selectedFilter === 'globe' ? (
         <>
-          <ScrollView style={styles.scrollView}>
-            <View style={styles.header}>
-              <Text style={styles.title}>Top 5 Spots</Text>
-            </View>
+                <ScrollView style={styles.scrollView}>
+                  <View style={styles.header}>
+                    <Text style={styles.title}>Top 5 spots de la semaine</Text>
+                  </View>
           
             {loading ? (
               <View style={styles.loadingContainer}>
@@ -149,12 +149,11 @@ const SlideMenuScreen = ({ onClose }: SlideMenuScreenProps) => {
                       </View>
                       <View style={styles.spotInfo}>
                         <Text style={styles.spotName}>{spot.placeName}</Text>
-                        <View style={styles.spotStats}>
-                          <Text style={styles.heartEyesEmoji}>😍</Text>
-                          <Text style={styles.reactionCount}>
-                            {spot.heartEyesCount} réaction{spot.heartEyesCount > 1 ? 's' : ''}
-                          </Text>
-                        </View>
+                              <View style={styles.spotStats}>
+                                <Text style={styles.reactionCount}>
+                                  {spot.heartEyesCount} réaction{spot.heartEyesCount > 1 ? 's' : ''}
+                                </Text>
+                              </View>
                       </View>
                     </View>
                   ))
@@ -369,6 +368,7 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     color: '#FFFFFF',
     marginBottom: 5,
+    textAlign: 'center',
   },
   subtitle: {
     fontSize: 16,
@@ -390,13 +390,15 @@ const styles = StyleSheet.create({
   rankingContainer: {
     paddingHorizontal: 20,
     paddingVertical: 15,
+    paddingBottom: 140,
   },
   spotItem: {
     flexDirection: 'row',
     backgroundColor: 'rgba(255, 255, 255, 0.8)',
     borderRadius: 12,
     padding: 15,
-    marginVertical: 6,
+    marginVertical: 4,
+    height: 80,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,

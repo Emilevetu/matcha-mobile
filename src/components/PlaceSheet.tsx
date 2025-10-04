@@ -7,7 +7,9 @@ import {
   Dimensions,
   Image,
   ScrollView,
+  Linking,
 } from 'react-native';
+import * as Clipboard from 'expo-clipboard';
 import { MapPin, Clock, Heart, Bookmark, Share, X, Users } from 'react-native-feather';
 import { ReactionSheet } from './ReactionSheet';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
@@ -33,8 +35,48 @@ export const PlaceSheet: React.FC = () => {
   const [isFullScreen, setIsFullScreen] = useState(false);
   const [showReactionSheet, setShowReactionSheet] = useState(false);
   const [showBadgeSelector, setShowBadgeSelector] = useState(false);
+  const [showLocationOptions, setShowLocationOptions] = useState(false);
   const { data: placeStats, isLoading: isLoadingStats } = usePlaceStats(selectedPlace?.id || '');
   const { data: placeBadges, isLoading: isLoadingBadges } = usePlaceBadges(selectedPlace?.id || '');
+
+  // Fonction pour ouvrir la fenêtre de sélection
+  const openLocationOptions = () => {
+    setShowLocationOptions(true);
+  };
+
+  // Fonction pour ouvrir Plans avec l'adresse
+  const openInAppleMaps = () => {
+    if (selectedPlace?.address) {
+      const encodedAddress = encodeURIComponent(selectedPlace.address);
+      const mapsUrl = `http://maps.apple.com/?q=${encodedAddress}`;
+      Linking.openURL(mapsUrl);
+    }
+    setShowLocationOptions(false);
+  };
+
+  // Fonction pour ouvrir Google Maps avec l'adresse
+  const openInGoogleMaps = () => {
+    if (selectedPlace?.address) {
+      const encodedAddress = encodeURIComponent(selectedPlace.address);
+      const mapsUrl = `https://www.google.com/maps/search/?api=1&query=${encodedAddress}`;
+      Linking.openURL(mapsUrl);
+    }
+    setShowLocationOptions(false);
+  };
+
+  // Fonction pour copier l'adresse
+  const copyAddress = async () => {
+    if (selectedPlace?.address) {
+      try {
+        await Clipboard.setStringAsync(selectedPlace.address);
+        alert('Adresse copiée !');
+      } catch (error) {
+        console.error('Erreur lors de la copie:', error);
+        alert('Erreur lors de la copie');
+      }
+    }
+    setShowLocationOptions(false);
+  };
 
   // Debug log pour vérifier l'état
   React.useEffect(() => {
@@ -249,18 +291,18 @@ export const PlaceSheet: React.FC = () => {
                     >
                       <Text style={styles.addBadgeTextLong}>Ajoute tes badges</Text>
                     </TouchableOpacity>
-                  </View>
-                )}
+              </View>
+            )}
               </View>
             </View>
-
+            
             {/* Informations du lieu */}
             <View style={styles.infoSection}>
               {/* Adresse */}
-              <View style={styles.infoRow}>
+              <TouchableOpacity style={styles.infoRow} onPress={openLocationOptions}>
                 <MapPin size={20} color="#7da06b" />
-                <Text style={styles.infoText}>{selectedPlace.address}</Text>
-              </View>
+                <Text style={[styles.infoText, styles.clickableText]}>{selectedPlace.address}</Text>
+              </TouchableOpacity>
               
               {/* Horaires */}
               {selectedPlace.hours && (
@@ -342,6 +384,56 @@ export const PlaceSheet: React.FC = () => {
             console.log('Badge ajouté, refresh automatique');
           }}
         />
+      )}
+
+      {/* Fenêtre de sélection de navigation */}
+      {showLocationOptions && (
+        <TouchableOpacity 
+          style={styles.locationOptionsOverlay}
+          onPress={() => setShowLocationOptions(false)}
+          activeOpacity={1}
+        >
+          <TouchableOpacity 
+            style={styles.locationOptionsContainer}
+            onPress={() => {}} // Empêche la fermeture quand on clique sur le container
+            activeOpacity={1}
+          >
+            <Text style={styles.locationOptionsTitle}>Y aller</Text>
+            
+            <TouchableOpacity style={styles.locationOption} onPress={openInAppleMaps}>
+              <View style={styles.locationOptionIcon}>
+                <Image 
+                  source={require('../../assets/apple-maps-icon.png')} 
+                  style={styles.mapsIcon}
+                  resizeMode="contain"
+                />
+              </View>
+              <Text style={styles.locationOptionText}>Ouvrir dans Plans</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity style={styles.locationOption} onPress={openInGoogleMaps}>
+              <View style={styles.locationOptionIcon}>
+                <Image 
+                  source={require('../../assets/google-maps-icon.png')} 
+                  style={styles.mapsIcon}
+                  resizeMode="contain"
+                />
+              </View>
+              <Text style={styles.locationOptionText}>Ouvrir dans Google Maps</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity style={styles.locationOption} onPress={copyAddress}>
+              <View style={styles.locationOptionIcon}>
+                <Image 
+                  source={require('../../assets/copy-icon.png')} 
+                  style={styles.mapsIcon}
+                  resizeMode="contain"
+                />
+              </View>
+              <Text style={styles.locationOptionText}>Copier l'adresse</Text>
+            </TouchableOpacity>
+          </TouchableOpacity>
+        </TouchableOpacity>
       )}
     </>
   );
@@ -519,6 +611,10 @@ const styles = StyleSheet.create({
     color: '#333',
     lineHeight: 22,
   },
+  clickableText: {
+    color: '#7da06b',
+    textDecorationLine: 'underline',
+  },
   actionsSection: {
     flexDirection: 'row',
     gap: 12,
@@ -617,5 +713,65 @@ const styles = StyleSheet.create({
     right: 0,
     bottom: 0,
     zIndex: 1,
+  },
+  // Styles pour la fenêtre de sélection de navigation
+  locationOptionsOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'flex-end',
+    zIndex: 2000,
+  },
+  locationOptionsContainer: {
+    backgroundColor: '#FFFFFF',
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    paddingTop: 20,
+    paddingHorizontal: 20,
+    paddingBottom: 40,
+    minHeight: 300,
+  },
+  locationOptionsTitle: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    color: '#333333',
+    marginBottom: 20,
+    textAlign: 'center',
+  },
+  locationOption: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 16,
+    paddingHorizontal: 12,
+    borderRadius: 12,
+    marginBottom: 8,
+    backgroundColor: '#F8F9FA',
+  },
+  locationOptionIcon: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: '#FFFFFF',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 16,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.1,
+    shadowRadius: 2,
+    elevation: 2,
+  },
+  mapsIcon: {
+    width: 24,
+    height: 24,
+  },
+  locationOptionText: {
+    fontSize: 16,
+    fontWeight: '500',
+    color: '#333333',
+    flex: 1,
   },
 });

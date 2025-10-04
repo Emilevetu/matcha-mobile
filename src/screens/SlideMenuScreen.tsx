@@ -5,7 +5,7 @@ import { getTop5SpotsByHeartEyes, SpotReactionCount } from '../services/reaction
 import { useUserSpots } from '../hooks/useUserSpots';
 import { useAuth } from '../contexts/AuthContext';
 import { supabase } from '../services/supabase';
-import { Globe, User, X } from 'react-native-feather';
+import { Globe, User, X, Trash2 } from 'react-native-feather';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import DraggableFlatList, { RenderItemParams } from 'react-native-draggable-flatlist';
 
@@ -18,6 +18,8 @@ const SlideMenuScreen = ({ onClose }: SlideMenuScreenProps) => {
   const [showAddSpotModal, setShowAddSpotModal] = useState(false);
   const [selectedSpots, setSelectedSpots] = useState<any[]>([]);
   const [showMaxSpotsAlert, setShowMaxSpotsAlert] = useState(false);
+  const [isDragging, setIsDragging] = useState(false);
+  const [draggedItem, setDraggedItem] = useState<any>(null);
   const { user } = useAuth();
 
   // Charger les spots sauvegardés au montage du composant
@@ -60,7 +62,7 @@ const SlideMenuScreen = ({ onClose }: SlideMenuScreenProps) => {
     queryFn: getTop5SpotsByHeartEyes,
     // ✅ Cache réduit pour mise à jour plus fréquente
     staleTime: 30 * 1000, // 30 secondes seulement
-    cacheTime: 2 * 60 * 1000, // 2 minutes
+    gcTime: 2 * 60 * 1000, // 2 minutes
   });
 
   // Récupérer les spots que l'utilisateur a aimés (même logique que le toggle personne seule)
@@ -118,7 +120,7 @@ const SlideMenuScreen = ({ onClose }: SlideMenuScreenProps) => {
     },
     enabled: !!user, // Seulement si l'utilisateur est connecté
     staleTime: 0, // Pas de cache - toujours frais
-    cacheTime: 0, // Pas de cache - toujours frais
+    gcTime: 0, // Pas de cache - toujours frais
   });
 
   if (error) {
@@ -141,8 +143,8 @@ const SlideMenuScreen = ({ onClose }: SlideMenuScreenProps) => {
               </View>
             ) : (
               <View style={styles.rankingContainer}>
-                {top5Spots.length > 0 ? (
-                  top5Spots.map((spot, index) => (
+                {(top5Spots as SpotReactionCount[]).length > 0 ? (
+                  (top5Spots as SpotReactionCount[]).map((spot, index) => (
                     <View key={spot.placeId} style={styles.spotItem}>
                       <View style={styles.rankContainer}>
                         <Text style={styles.rank}>#{index + 1}</Text>
@@ -174,10 +176,24 @@ const SlideMenuScreen = ({ onClose }: SlideMenuScreenProps) => {
           </View>
 
           <TouchableOpacity
-            style={styles.addSpotButton}
-            onPress={() => setShowAddSpotModal(true)}
+            style={[styles.addSpotButton, isDragging && styles.trashButton]}
+            onPress={() => {
+              if (isDragging && draggedItem) {
+                // Mode poubelle - supprimer l'élément en cours de drag
+                setSelectedSpots(prev => prev.filter(s => s.id !== draggedItem.id));
+                setIsDragging(false);
+                setDraggedItem(null);
+              } else if (!isDragging) {
+                // Mode normal - ouvrir le modal
+                setShowAddSpotModal(true);
+              }
+            }}
           >
-            <Text style={styles.addSpotButtonText}>Ajouter un spot</Text>
+            {isDragging ? (
+              <Trash2 width={20} height={20} color="#FFFFFF" />
+            ) : (
+              <Text style={styles.addSpotButtonText}>Ajouter un spot</Text>
+            )}
           </TouchableOpacity>
 
           {/* Liste des spots sélectionnés avec drag & drop */}
@@ -185,13 +201,20 @@ const SlideMenuScreen = ({ onClose }: SlideMenuScreenProps) => {
             <View style={styles.selectedSpotsContainer}>
               <DraggableFlatList
                 data={selectedSpots}
+                onDragBegin={(params) => {
+                  setIsDragging(true);
+                  setDraggedItem(params.item);
+                }}
                 onDragEnd={({ data }) => {
                   console.log('🔄 Drag & Drop - Nouvel ordre:', data.map((item, idx) => `${idx + 1}. ${item.name}`));
                   setSelectedSpots(data);
+                  setIsDragging(false);
+                  setDraggedItem(null);
                 }}
                 keyExtractor={(item) => item.id}
                 renderItem={(params) => {
-                  const { item, index, drag, isActive } = params;
+                  const { item, drag, isActive } = params;
+                  const index = (params as any).index;
                   // Utiliser l'index du tableau selectedSpots comme fallback
                   const fallbackIndex = selectedSpots.findIndex(spot => spot.id === item.id);
                   const finalIndex = index !== undefined ? index : fallbackIndex;
@@ -235,14 +258,14 @@ const SlideMenuScreen = ({ onClose }: SlideMenuScreenProps) => {
             style={[styles.filterButton, selectedFilter === 'globe' && styles.selectedFilter]}
             onPress={() => setSelectedFilter('globe')}
           >
-            <Globe size={20} color={selectedFilter === 'globe' ? '#FFFFFF' : '#8B8B8B'} />
+                <Globe width={20} height={20} color={selectedFilter === 'globe' ? '#FFFFFF' : '#8B8B8B'} />
           </TouchableOpacity>
           
           <TouchableOpacity 
             style={[styles.filterButton, selectedFilter === 'user' && styles.selectedFilter]}
             onPress={() => setSelectedFilter('user')}
           >
-            <User size={20} color={selectedFilter === 'user' ? '#FFFFFF' : '#8B8B8B'} />
+                <User width={20} height={20} color={selectedFilter === 'user' ? '#FFFFFF' : '#8B8B8B'} />
           </TouchableOpacity>
         </View>
       </View>
@@ -275,7 +298,7 @@ const SlideMenuScreen = ({ onClose }: SlideMenuScreenProps) => {
               </View>
             ) : (
               <FlatList
-                data={userLikedSpots}
+                data={userLikedSpots as any[]}
                 keyExtractor={(item) => item.id}
                 style={styles.modalList}
                 showsVerticalScrollIndicator={false}
@@ -507,12 +530,21 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.1,
     shadowRadius: 4,
     elevation: 3,
+    zIndex: 1000,
   },
   addSpotButtonText: {
     fontSize: 16,
     fontWeight: '600',
     color: '#7da06b',
     textAlign: 'center',
+  },
+  trashButton: {
+    backgroundColor: '#7da06b',
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 2,
+    borderColor: '#FFFFFF',
+    borderStyle: 'dashed',
   },
   // Styles pour le modal
   modalOverlay: {
@@ -602,6 +634,7 @@ const styles = StyleSheet.create({
   selectedSpotsContainer: {
     marginTop: 20,
     paddingHorizontal: 20,
+    zIndex: 1,
   },
   selectedSpotsTitle: {
     fontSize: 18,
